@@ -1533,11 +1533,11 @@ function update(dt, now) {
   if (keys["d"] || keys["arrowright"]) mx++;
 
   const len = Math.hypot(mx, my) || 1;
-  let speed = player.speed;
+let speed = player.speed;
 
-  if (player.orbRunner && orbs.length > 0) speed *= 1.25;
+if (player.orbRunner && orbs.length > 0) speed *= 1.25;
 
- if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
+if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
   player.lastDash = now;
   player.invincible = 0.3;
   player.dashTimer = player.dashDuration;
@@ -1565,20 +1565,21 @@ if (player.dashTimer > 0) {
   player.x += (mx / len) * speed * dt;
   player.y += (my / len) * speed * dt;
 }
-  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+
+// ABSOLUTE WALL LOCK — walking AND dashing cannot leave the screen
+player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
 player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
 
-if (player.x <= player.r || player.x >= canvas.width - player.r) {
-  player.dashTimer = 0;
-}
-
-if (player.y <= player.r || player.y >= canvas.height - player.r) {
+if (
+  player.x <= player.r ||
+  player.x >= canvas.width - player.r ||
+  player.y <= player.r ||
+  player.y >= canvas.height - player.r
+) {
   player.dashTimer = 0;
 }
 
 player.invincible -= dt;
-  player.invincible -= dt;
-
   if (mouse.down || keys[" "]) shoot(now);
 
   updateBullets(dt);
