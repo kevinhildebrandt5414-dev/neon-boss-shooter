@@ -558,38 +558,35 @@ function buyPermanentUpgrade(type) {
 }
 
 function openCharacterShop() {
+  const ids = Object.keys(characterData);
+
   let msg = "CHARACTER SHOP\n\n";
   msg += "Coins: " + save.coins + "\n";
   msg += "Selected: " + characterData[save.selectedCharacter].name + "\n\n";
-
-  const ids = Object.keys(characterData);
 
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
     const c = characterData[id];
     const owned = save.ownedCharacters.indexOf(id) !== -1;
 
-    let locked = "";
-    if (id === "VOID" && !owned) locked = " — WAVE 25 UNLOCK";
-    if (id === "OVERLORD" && !owned) locked = " — FINAL BOSS UNLOCK";
+    let status = owned ? "OWNED" : c.cost + " coins";
+
+    if (id === "VOID" && !owned) status = "Unlock: beat wave 25";
+    if (id === "OVERLORD" && !owned) status = "Unlock: beat wave 50";
 
     msg +=
-      i + 1 + ". " +
+      (i + 1) + ". " +
       c.name +
-      " — " +
-      (owned ? "OWNED" : c.cost + " coins") +
-      locked +
-      "\n   Start Weapon: " + c.startWeapon +
-      "\n   HP: " + c.maxHp +
-      " | Speed: " + c.speed +
-      " | Damage: " + c.damage +
-      " | Armor: " + c.armor +
-      "\n   Passive: " + c.passive +
-      "\n   Ability [1]: " + c.manual +
-      "\n\n";
+      " | " +
+      status +
+      " | HP " + c.maxHp +
+      " | SPD " + c.speed +
+      " | DMG " + c.damage +
+      " | Start: " + c.startWeapon +
+      "\n";
   }
 
-  msg += "Type a number to buy/select, or cancel.";
+  msg += "\nType a number to buy/select.";
 
   const choice = prompt(msg);
   resetControls();
