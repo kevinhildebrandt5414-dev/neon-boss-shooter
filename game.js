@@ -1565,6 +1565,18 @@ if (player.dashTimer > 0) {
   player.x += (mx / len) * speed * dt;
   player.y += (my / len) * speed * dt;
 }
+  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+
+if (player.x <= player.r || player.x >= canvas.width - player.r) {
+  player.dashTimer = 0;
+}
+
+if (player.y <= player.r || player.y >= canvas.height - player.r) {
+  player.dashTimer = 0;
+}
+
+player.invincible -= dt;
   player.invincible -= dt;
 
   if (mouse.down || keys[" "]) shoot(now);
