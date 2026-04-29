@@ -1319,8 +1319,8 @@ function shoot(now) {
     screenShake = Math.max(screenShake, 6);
   }
 
-  if (weaponName === "RAILGUN") {
-    createPlayerBullet(angle, baseDmg * (evo ? 4.9 : 3.9) * damageBoost * crit, data.color, 6, 1.6, true, weaponName);
+if (weaponName === "RAILGUN") {
+    createPlayerBullet(angle, baseDmg * (evo ? 4.1 : 3.2) * damageBoost * crit, data.color, 6, 1.6, true, weaponName);
     bullets[bullets.length - 1].vx *= 1.35;
     bullets[bullets.length - 1].vy *= 1.35;
     bullets[bullets.length - 1].pierce = evo ? 12 : 8;
