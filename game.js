@@ -1,7 +1,7 @@
 // =====================================================
-// NEON BOSS SHOOTER: PUBLIC EDITION
-// Put this entire file inside game.js
-// Requires index.html with: <script src="game.js"></script>
+// NEON BOSS SHOOTER: PUBLIC EDITION V2
+// Paste this entire file into game.js
+// No <script> tags needed.
 // =====================================================
 
 
@@ -43,10 +43,10 @@ window.addEventListener("resize", resize);
 
 
 // =====================================================
-// SAVE DATA
+// SAVE
 // =====================================================
 
-const SAVE_KEY = "neonBossShooterPublicV1";
+const SAVE_KEY = "neonBossShooterPublicV2";
 
 let save =
   JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {
@@ -110,6 +110,7 @@ function playSound(freq, duration, type, volume) {
 
   osc.type = type || "sine";
   osc.frequency.value = freq;
+
   gain.gain.setValueAtTime(volume || 0.04, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(
     0.001,
@@ -125,7 +126,7 @@ function playSound(freq, duration, type, volume) {
 
 
 // =====================================================
-// GAME DATA
+// DATA
 // =====================================================
 
 const achievementList = {
@@ -306,7 +307,12 @@ const bossNames = {
   RAVAGER_1: "Ravager: Dormant Form",
   RAVAGER_2: "Ravager: Awakened Form",
   FINAL: "Worldbreaker Ravager",
-  PAST_BOSS: "Echo Boss"
+  PAST_BOSS: "Echo Boss",
+  RAVAGER_ECHO: "Ravager Echo",
+  RAVAGER_BURNING: "Burning Ravager",
+  RAVAGER_VOID: "Void Ravager",
+  RAVAGER_IRON: "Iron Ravager",
+  RAVAGER_CROWNED: "Crowned Ravager"
 };
 
 const bossCycle = [
@@ -321,6 +327,14 @@ const bossCycle = [
   "PULSER",
   "MIRROR",
   "HYBRID"
+];
+
+const ravagerEchoCycle = [
+  "RAVAGER_ECHO",
+  "RAVAGER_BURNING",
+  "RAVAGER_VOID",
+  "RAVAGER_IRON",
+  "RAVAGER_CROWNED"
 ];
 
 
@@ -463,7 +477,7 @@ canvas.addEventListener("touchend", function (e) {
 
 
 // =====================================================
-// ACHIEVEMENTS / SHOPS
+// SHOPS / ACHIEVEMENTS
 // =====================================================
 
 function unlockAchievement(id) {
@@ -718,41 +732,6 @@ function updateCutscene(dt) {
   }
 }
 
-function drawCutscene() {
-  if (!cutscene) return;
-
-  const current = cutscene.lines[cutscene.index];
-  const pulse = 1 + Math.sin(performance.now() / 120) * 0.04;
-
-  ctx.fillStyle = "rgba(0,0,0,0.72)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  if (current.kind === "ravager_dead") {
-    drawRavagerCorpse(canvas.width / 2, canvas.height / 2 + 70, 1);
-  }
-
-  if (current.kind === "ravager_awaken") {
-    drawRavagerCorpse(canvas.width / 2, canvas.height / 2 + 70, pulse);
-    burstVisual(canvas.width / 2, canvas.height / 2 + 70, "#ff2f88", 18);
-  }
-
-  if (current.kind === "final") {
-    drawFinalFlowerBoss(canvas.width / 2, canvas.height / 2 - 80, 1.1 * pulse, "#ff2f88");
-  }
-
-  ctx.textAlign = "center";
-  ctx.shadowBlur = 22;
-  ctx.shadowColor = current.color || "#ff3b93";
-  ctx.fillStyle = current.color || "#ffffff";
-  ctx.font = "bold " + (current.size || 34) + "px Arial";
-  ctx.fillText(current.text, canvas.width / 2, canvas.height / 2 - 150);
-
-  ctx.shadowBlur = 0;
-  ctx.font = "16px Arial";
-  ctx.fillStyle = "#c7d4ff";
-  ctx.fillText("Press ENTER to skip line", canvas.width / 2, canvas.height - 60);
-}
-
 function startWave25Intro() {
   startCutscene(
     [
@@ -794,6 +773,7 @@ function startWave50Intro() {
       { text: "WARNING: FINAL EVOLUTION DETECTED.", color: "#ff5e3b", duration: 2.0, kind: "ravager_awaken" },
       { text: "IT WAS NEVER DEAD.", color: "#ff2f88", size: 42, duration: 2.2, kind: "ravager_awaken" },
       { text: "WORLDBREAKER RAVAGER", color: "#ff2f88", size: 46, duration: 2.4, kind: "final" },
+      { text: "It has lost control of its own power.", color: "#ffde59", duration: 2.1, kind: "final" },
       { text: "Use the fallen orbs to bring it down.", color: "#7dfcff", duration: 2.2, kind: "final" }
     ],
     function () {
@@ -806,9 +786,53 @@ function startWave50Intro() {
   );
 }
 
+function startFinalEndingCutscene() {
+  startCutscene(
+    [
+      { text: "WORLDBREAKER RAVAGER DEFEATED", color: "#ffffff", size: 42, duration: 2.2, kind: "final_explode" },
+      { text: "The core shattered...", color: "#7dfcff", duration: 2.1, kind: "final_explode" },
+      { text: "For one second, the neon world went silent.", color: "#c7d4ff", duration: 2.4, kind: "dark" },
+      { text: "But the silence did not last.", color: "#ff5e3b", duration: 2.2, kind: "dark" },
+      { text: "Fragments of the Ravager scattered into every wave.", color: "#ffde59", duration: 2.8, kind: "final_explode" },
+      { text: "CHAOS MODE UNLOCKED", color: "#ff2f88", size: 48, duration: 2.3, kind: "final_explode" },
+      { text: "Every wave now carries two corrupted bosses.", color: "#ffffff", duration: 2.5, kind: "final_explode" },
+      { text: "Every 5 waves, a Ravager Echo returns.", color: "#b28cff", duration: 2.5, kind: "final_explode" }
+    ],
+    function () {
+      save.chaosUnlocked = true;
+
+      if (save.ownedCharacters.indexOf("OVERLORD") === -1) {
+        save.ownedCharacters.push("OVERLORD");
+      }
+
+      save.coins += 100;
+      saveGame();
+
+      unlockAchievement("finalBoss");
+      unlockAchievement("chaos");
+      unlockAchievement("overlordUnlocked");
+
+      alert(
+        "FINAL BOSS DEFEATED!\n\n" +
+        "CHAOS MODE UNLOCKED!\n" +
+        "+100 permanent coins!\n" +
+        "Secret character unlocked: OVERLORD!\n\n" +
+        "Chaos Mode rules:\n" +
+        "- Double bosses every wave\n" +
+        "- Ravager Echo every 5 waves"
+      );
+
+      resetControls();
+      wave++;
+      state = "playing";
+      spawnWave();
+    }
+  );
+}
+
 
 // =====================================================
-// WAVES / SPAWNING
+// WAVES
 // =====================================================
 
 function applyMilestones() {
@@ -860,8 +884,8 @@ function spawnWave() {
     return;
   }
 
-  const easyScale = wave < 25 ? 0.75 : 1.0;
-  const count = Math.floor((5 + wave * 1.7) * easyScale);
+  const easyScale = wave < 25 ? 0.72 : 1.0;
+  const count = Math.floor((5 + wave * 1.6) * easyScale);
 
   for (let i = 0; i < count; i++) spawnEnemy("normal");
 
@@ -878,26 +902,30 @@ function spawnWave() {
 
 function startChaosWave() {
   const bossIndex = Math.floor(wave - 51) % bossCycle.length;
-  const type = bossCycle[bossIndex];
+  const bossA = bossCycle[bossIndex];
+  const bossB = bossCycle[(bossIndex + 4) % bossCycle.length];
 
-  spawnBoss(type, true, false);
-
-  if (wave % 3 === 0) {
-    spawnBoss(bossCycle[(bossIndex + 3) % bossCycle.length], true, true);
+  if (wave % 5 === 0) {
+    const echoIndex = Math.floor((wave - 55) / 5) % ravagerEchoCycle.length;
+    spawnBoss(ravagerEchoCycle[Math.max(0, echoIndex)], true, false);
+    spawnBoss(bossB, true, false);
+    floatingText(canvas.width / 2, 90, "RAVAGER ECHO WAVE " + wave, "#b28cff", 30);
+  } else {
+    spawnBoss(bossA, true, false);
+    spawnBoss(bossB, true, false);
+    floatingText(canvas.width / 2, 90, "CHAOS WAVE " + wave + " - DOUBLE BOSSES", "#ff3b93", 30);
   }
 
-  const count = 4 + Math.floor(wave / 5);
+  const count = 4 + Math.floor(wave / 7);
 
   for (let i = 0; i < count; i++) {
     spawnEnemy(i % 3 === 0 ? "fast" : "normal");
   }
-
-  floatingText(canvas.width / 2, 90, "CHAOS WAVE " + wave, "#ff3b93", 30);
 }
 
 function startBossWarning(type) {
   state = "bossWarning";
-  bossWarningTimer = type === "FINAL" ? 3.0 : 2.1;
+  bossWarningTimer = 2.1;
   pendingBossType = type;
   currentBossName = bossNames[type] || "Boss";
 
@@ -925,6 +953,11 @@ function updateBossWarning(dt) {
 
   screenShake *= 0.9;
 }
+
+
+// =====================================================
+// SPAWNING
+// =====================================================
 
 function randomEdgePosition() {
   const side = Math.floor(Math.random() * 4);
@@ -1080,27 +1113,67 @@ function spawnBoss(type, chaos, small) {
   }
 
   if (type === "RAVAGER_2") {
-    hp = 850;
-    speed = 78;
-    damage = 28;
+    hp = 900;
+    speed = 86;
+    damage = 30;
     r = 76;
     color = "#ff2f88";
   }
 
   if (type === "FINAL") {
-    hp = 2400;
+    hp = 2800;
     speed = 0;
-    damage = 35;
-    r = 110;
+    damage = 42;
+    r = 125;
     color = "#ff2f88";
   }
 
   if (type === "PAST_BOSS") {
-    hp = 180 + wave * 8;
-    speed = 75 + wave * 1.2;
-    damage = 18;
+    hp = 190 + wave * 8;
+    speed = 80 + wave * 1.3;
+    damage = 20;
     r = 40;
     color = "#b28cff";
+  }
+
+  if (type === "RAVAGER_ECHO") {
+    hp = 650 + wave * 12;
+    speed = 90;
+    damage = 28;
+    r = 62;
+    color = "#b28cff";
+  }
+
+  if (type === "RAVAGER_BURNING") {
+    hp = 700 + wave * 13;
+    speed = 95;
+    damage = 31;
+    r = 64;
+    color = "#ff5e3b";
+  }
+
+  if (type === "RAVAGER_VOID") {
+    hp = 720 + wave * 13;
+    speed = 88;
+    damage = 32;
+    r = 66;
+    color = "#6b3cff";
+  }
+
+  if (type === "RAVAGER_IRON") {
+    hp = 920 + wave * 15;
+    speed = 70;
+    damage = 34;
+    r = 70;
+    color = "#8cff9f";
+  }
+
+  if (type === "RAVAGER_CROWNED") {
+    hp = 1000 + wave * 16;
+    speed = 95;
+    damage = 36;
+    r = 72;
+    color = "#ffde59";
   }
 
   if (chaos) {
@@ -1128,8 +1201,8 @@ function spawnBoss(type, chaos, small) {
     specialTimer: 2.2,
     chargeTimer: player.dashCooldown * 2,
     summonTimer: 3,
-    orbTimer: 7,
-    halfMapTimer: 5,
+    orbTimer: 6.5,
+    quadrantTimer: 3.2,
     spin: 0,
     phase: 1,
     splitDone: false,
@@ -1291,7 +1364,7 @@ function createEnemyBullet(x, y, angle, speed, size, damage, color) {
 
 
 // =====================================================
-// CHARACTER ABILITIES
+// ABILITIES
 // =====================================================
 
 function useCharacterAbility() {
@@ -1379,7 +1452,7 @@ function useCharacterAbility() {
 
 
 // =====================================================
-// UPDATE LOOP
+// UPDATE
 // =====================================================
 
 function update(dt, now) {
@@ -1482,28 +1555,7 @@ function handleWaveClear() {
   }
 
   if (wave === 50 && finalStarted) {
-    save.chaosUnlocked = true;
-
-    if (save.ownedCharacters.indexOf("OVERLORD") === -1) {
-      save.ownedCharacters.push("OVERLORD");
-    }
-
-    save.coins += 100;
-    saveGame();
-
-    unlockAchievement("finalBoss");
-    unlockAchievement("chaos");
-    unlockAchievement("overlordUnlocked");
-
-    alert(
-      "FINAL BOSS DEFEATED!\n\n" +
-      "CHAOS MODE UNLOCKED!\n" +
-      "+100 permanent coins!\n" +
-      "Secret character unlocked: OVERLORD!"
-    );
-
-    resetControls();
-    bossClearReward(false);
+    startFinalEndingCutscene();
     return;
   }
 
@@ -1589,6 +1641,17 @@ function updateBoss(e, dt, angle, mult) {
 
   if (e.bossType === "RAVAGER_2") {
     updateRavagerAwakened(e, dt, angle, mult);
+    return;
+  }
+
+  if (
+    e.bossType === "RAVAGER_ECHO" ||
+    e.bossType === "RAVAGER_BURNING" ||
+    e.bossType === "RAVAGER_VOID" ||
+    e.bossType === "RAVAGER_IRON" ||
+    e.bossType === "RAVAGER_CROWNED"
+  ) {
+    updateRavagerEcho(e, dt, angle, mult);
     return;
   }
 
@@ -1726,19 +1789,26 @@ function updateRavagerDormant(e, dt, angle, mult) {
   e.spin += dt * 0.5;
   e.specialTimer -= dt * mult;
   e.shootTimer -= dt * mult;
+  e.summonTimer -= dt * mult;
 
   if (e.shootTimer <= 0) {
-    e.shootTimer = 1.5;
+    e.shootTimer = 1.45;
     for (let i = 0; i < 6; i++) {
       const a = e.spin + (i * Math.PI * 2) / 6;
-      createEnemyBullet(e.x, e.y, a, 210, 8, 15, "#5b6478");
+      createEnemyBullet(e.x, e.y, a, 220, 8, 15, "#5b6478");
     }
   }
 
   if (e.specialTimer <= 0) {
-    e.specialTimer = 4.0;
-    createHalfMapHazard(Math.random() < 0.5 ? "left" : "right", "#ff9f43", 0.95, 18);
-    floatingText(canvas.width / 2, 120, "MAP ATTACK", "#ff9f43", 24);
+    e.specialTimer = 3.1;
+    createQuadrantBeam(randomQuadrant(), "#ff9f43", 0.85, 18);
+    floatingText(canvas.width / 2, 120, "FALLING BEAM", "#ff9f43", 24);
+  }
+
+  if (e.summonTimer <= 0) {
+    e.summonTimer = 3.4;
+    spawnEnemy("fast");
+    spawnEnemy("normal");
   }
 }
 
@@ -1753,41 +1823,81 @@ function updateRavagerAwakened(e, dt, angle, mult) {
   e.y += Math.sin(angle) * speed * dt * mult;
 
   if (e.shootTimer <= 0) {
-    e.shootTimer = e.phase === 2 ? 0.85 : 1.1;
+    e.shootTimer = e.phase === 2 ? 0.78 : 1.0;
     const shots = e.phase === 2 ? 12 : 9;
 
     for (let i = 0; i < shots; i++) {
       const a = e.spin + (i * Math.PI * 2) / shots;
-      createEnemyBullet(e.x, e.y, a, e.phase === 2 ? 280 : 240, 8, 18, "#ff2f88");
+      createEnemyBullet(e.x, e.y, a, e.phase === 2 ? 285 : 245, 8, 18, "#ff2f88");
     }
   }
 
   if (e.specialTimer <= 0) {
-    e.specialTimer = e.phase === 2 ? 3.2 : 4.2;
-    const side = ["left", "right", "top", "bottom"][Math.floor(Math.random() * 4)];
-    createHalfMapHazard(side, "#ff2f88", e.phase === 2 ? 0.75 : 0.95, 24);
+    e.specialTimer = e.phase === 2 ? 2.35 : 2.8;
+    createQuadrantBeam(randomQuadrant(), "#ff2f88", e.phase === 2 ? 0.62 : 0.75, 26);
     screenShake = Math.max(screenShake, 8);
   }
 
   if (e.summonTimer <= 0) {
-    e.summonTimer = 4.5;
+    e.summonTimer = e.phase === 2 ? 2.6 : 3.1;
+    spawnEnemy("fast");
     spawnEnemy("fast");
     spawnEnemy("normal");
   }
 }
 
-function updateFinalBoss(e, dt, angle, mult) {
-  e.x = canvas.width / 2 + Math.sin(performance.now() / 900) * 120;
-  e.y = canvas.height * 0.2 + Math.cos(performance.now() / 1100) * 30;
+function updateRavagerEcho(e, dt, angle, mult) {
+  e.spin += dt * 2;
+  e.shootTimer -= dt * mult;
+  e.specialTimer -= dt * mult;
+  e.summonTimer -= dt * mult;
 
-  e.phase = e.hp < e.maxHp * 0.65 ? 2 : 1;
-  if (e.hp < e.maxHp * 0.32) e.phase = 3;
+  let speed = e.speed * (e.phase === 2 ? 1.15 : 1.0);
+  e.x += Math.cos(angle) * speed * dt * mult;
+  e.y += Math.sin(angle) * speed * dt * mult;
+
+  if (e.shootTimer <= 0) {
+    e.shootTimer = e.phase === 2 ? 0.7 : 0.95;
+    const shots = e.phase === 2 ? 12 : 8;
+
+    for (let i = 0; i < shots; i++) {
+      const a = e.spin + (i * Math.PI * 2) / shots;
+      createEnemyBullet(e.x, e.y, a, 260, 8, 20, e.color);
+    }
+  }
+
+  if (e.specialTimer <= 0) {
+    e.specialTimer = e.phase === 2 ? 2.0 : 2.6;
+
+    createQuadrantBeam(randomQuadrant(), e.color, 0.58, 28);
+
+    if (e.bossType === "RAVAGER_CROWNED" || e.phase === 2) {
+      const q1 = randomQuadrant();
+      let q2 = randomQuadrant();
+      while (q2 === q1) q2 = randomQuadrant();
+      createQuadrantBeam(q2, e.color, 0.7, 24);
+    }
+  }
+
+  if (e.summonTimer <= 0) {
+    e.summonTimer = 3.0;
+    spawnEnemy(e.bossType === "RAVAGER_IRON" ? "tank" : "fast");
+    spawnEnemy("normal");
+  }
+}
+
+function updateFinalBoss(e, dt, angle, mult) {
+  e.x = canvas.width / 2 + Math.sin(performance.now() / 650) * 145;
+  e.y = canvas.height * 0.2 + Math.cos(performance.now() / 800) * 45;
+
+  e.phase = e.hp < e.maxHp * 0.66 ? 2 : 1;
+  if (e.hp < e.maxHp * 0.33) e.phase = 3;
 
   e.shootTimer -= dt * mult;
   e.specialTimer -= dt * mult;
   e.summonTimer -= dt * mult;
   e.orbTimer -= dt * mult;
-  e.halfMapTimer -= dt * mult;
+  e.quadrantTimer -= dt * mult;
 
   if (finalDownTimer > 0) {
     finalDownTimer -= dt;
@@ -1799,66 +1909,74 @@ function updateFinalBoss(e, dt, angle, mult) {
   e.downed = false;
 
   if (e.shootTimer <= 0) {
-    e.shootTimer = e.phase === 3 ? 0.58 : e.phase === 2 ? 0.78 : 1.0;
-    const shots = e.phase === 3 ? 18 : e.phase === 2 ? 15 : 12;
+    e.shootTimer = e.phase === 3 ? 0.48 : e.phase === 2 ? 0.68 : 0.9;
+    const shots = e.phase === 3 ? 20 : e.phase === 2 ? 16 : 12;
 
     for (let i = 0; i < shots; i++) {
       const a = e.spin + (i * Math.PI * 2) / shots;
-      createEnemyBullet(e.x, e.y, a, e.phase === 3 ? 315 : 275, 8, 22, "#ff2f88");
+      createEnemyBullet(e.x, e.y, a, e.phase === 3 ? 330 : 285, 8, 24, i % 2 === 0 ? "#ff2f88" : "#ffde59");
     }
 
-    e.spin += 0.35;
+    e.spin += 0.45;
   }
 
-  if (e.halfMapTimer <= 0) {
-    e.halfMapTimer = e.phase === 3 ? 2.8 : e.phase === 2 ? 3.8 : 4.8;
-    const side = ["left", "right", "top", "bottom"][Math.floor(Math.random() * 4)];
-    createHalfMapHazard(side, "#ff2f88", e.phase === 3 ? 0.55 : 0.75, 38);
-    floatingText(canvas.width / 2, 115, "HALF-MAP WIPE", "#ff2f88", 24);
+  if (e.quadrantTimer <= 0) {
+    e.quadrantTimer = e.phase === 3 ? 1.35 : e.phase === 2 ? 1.75 : 2.2;
+
+    const q1 = randomQuadrant();
+    createQuadrantBeam(q1, "#ff2f88", e.phase === 3 ? 0.45 : 0.6, 42);
+
+    if (e.phase >= 2) {
+      let q2 = randomQuadrant();
+      while (q2 === q1) q2 = randomQuadrant();
+      createQuadrantBeam(q2, "#ffde59", e.phase === 3 ? 0.55 : 0.7, 34);
+    }
+
+    floatingText(canvas.width / 2, 115, "FALLING BEAMS", "#ff2f88", 24);
     screenShake = Math.max(screenShake, 10);
   }
 
   if (e.specialTimer <= 0) {
-    e.specialTimer = e.phase === 3 ? 4.0 : 5.5;
-    createRingHazard(e.x, e.y, 60, 520, 28, "#ffde59");
+    e.specialTimer = e.phase === 3 ? 3.4 : 4.6;
+    createRingHazard(e.x, e.y, 60, 540, 30, "#ffde59");
   }
 
   if (e.summonTimer <= 0) {
-    e.summonTimer = e.phase === 3 ? 5.0 : 7.0;
+    e.summonTimer = e.phase === 3 ? 4.2 : 5.8;
     spawnBoss("PAST_BOSS", true, true);
-    if (e.phase >= 2) spawnEnemy("tank");
-    if (e.phase >= 3) spawnBoss("PAST_BOSS", true, true);
-    floatingText(e.x, e.y + 90, "PAST BOSSES RETURN", "#b28cff", 18);
+    spawnEnemy("fast");
+    spawnEnemy("tank");
+    if (e.phase >= 2) spawnBoss("PAST_BOSS", true, true);
+    if (e.phase >= 3) spawnEnemy("fast");
+    floatingText(e.x, e.y + 105, "PAST BOSSES RETURN", "#b28cff", 18);
   }
 
   if (e.orbTimer <= 0) {
-    e.orbTimer = e.phase === 3 ? 7.5 : 9.5;
+    e.orbTimer = e.phase === 3 ? 7.2 : 8.5;
     spawnFinalOrb();
   }
 }
 
-function spawnFinalOrb() {
-  orbs.push({
-    x: 100 + Math.random() * (canvas.width - 200),
-    y: 150 + Math.random() * (canvas.height - 300),
-    r: 20,
-    timer: 9,
-    color: "#7dfcff"
-  });
 
-  floatingText(canvas.width / 2, 145, "POWER ORB DROPPED - RUN TO IT", "#7dfcff", 24);
-  playSound(900, 0.18, "triangle", 0.07);
+// =====================================================
+// HAZARDS / ORBS
+// =====================================================
+
+function randomQuadrant() {
+  const qs = ["topLeft", "topRight", "bottomLeft", "bottomRight"];
+  return qs[Math.floor(Math.random() * qs.length)];
 }
 
-function createHalfMapHazard(side, color, warning, damage) {
+function createQuadrantBeam(quadrant, color, warning, damage) {
   hazards.push({
-    type: "half",
-    side: side,
+    type: "quadrantBeam",
+    quadrant: quadrant,
     timer: 0,
     warning: warning,
-    duration: 0.35,
+    duration: 0.45,
     damage: damage,
-    color: color
+    color: color,
+    beamFall: 0
   });
 }
 
@@ -1891,15 +2009,9 @@ function updateHazards(dt) {
       }
     }
 
-    if (h.type === "half" && h.timer > h.warning && h.timer < h.warning + h.duration) {
-      let hit = false;
-
-      if (h.side === "left" && player.x < canvas.width / 2) hit = true;
-      if (h.side === "right" && player.x > canvas.width / 2) hit = true;
-      if (h.side === "top" && player.y < canvas.height / 2) hit = true;
-      if (h.side === "bottom" && player.y > canvas.height / 2) hit = true;
-
-      if (hit && player.invincible <= 0 && player.ghostTimer <= 0) {
+    if (h.type === "quadrantBeam") {
+      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
+      if (active && pointInQuadrant(player.x, player.y, h.quadrant) && player.invincible <= 0 && player.ghostTimer <= 0) {
         hurtPlayer(h.damage);
         player.invincible = 0.35;
       }
@@ -1919,8 +2031,40 @@ function updateHazards(dt) {
 
   hazards = hazards.filter(function (h) {
     if (h.type === "ring") return h.timer < h.duration;
+    if (h.type === "quadrantBeam") return h.timer < h.warning + h.duration;
     return h.timer < h.warning + h.duration;
   });
+}
+
+function pointInQuadrant(x, y, q) {
+  if (q === "topLeft") return x < canvas.width / 2 && y < canvas.height / 2;
+  if (q === "topRight") return x >= canvas.width / 2 && y < canvas.height / 2;
+  if (q === "bottomLeft") return x < canvas.width / 2 && y >= canvas.height / 2;
+  if (q === "bottomRight") return x >= canvas.width / 2 && y >= canvas.height / 2;
+  return false;
+}
+
+function getQuadrantRect(q) {
+  const w = canvas.width / 2;
+  const h = canvas.height / 2;
+
+  if (q === "topLeft") return { x: 0, y: 0, w: w, h: h };
+  if (q === "topRight") return { x: w, y: 0, w: w, h: h };
+  if (q === "bottomLeft") return { x: 0, y: h, w: w, h: h };
+  return { x: w, y: h, w: w, h: h };
+}
+
+function spawnFinalOrb() {
+  orbs.push({
+    x: 100 + Math.random() * (canvas.width - 200),
+    y: 150 + Math.random() * (canvas.height - 300),
+    r: 20,
+    timer: 9,
+    color: "#7dfcff"
+  });
+
+  floatingText(canvas.width / 2, 145, "POWER ORB DROPPED - RUN TO IT", "#7dfcff", 24);
+  playSound(900, 0.18, "triangle", 0.07);
 }
 
 function updateOrbs(dt) {
@@ -1942,7 +2086,6 @@ function hitFinalBossWithOrb(o) {
   const boss = getFinalBoss();
   if (!boss) return;
 
-  boss.hp -= boss.maxHp * 0.25;
   boss.hit = 0.4;
   finalDownTimer = 4.2;
 
@@ -1992,9 +2135,9 @@ function handleCollisions() {
     for (const e of enemies) {
       if (e.bossType === "FINAL" && !e.downed) {
         if (distance(b, e) < b.r + e.r) {
-          e.hp -= b.damage * 0.12;
           b.life = -1;
           burst(b.x, b.y, "#ff2f88", 3, 80);
+          floatingText(b.x, b.y, "SHIELDED", "#ff2f88", 12);
           break;
         }
       } else if (distance(b, e) < b.r + e.r) {
@@ -2257,7 +2400,7 @@ function giveFreeBossUpgrade() {
 
 
 // =====================================================
-// DRAWING HELPERS
+// DRAW HELPERS
 // =====================================================
 
 function burst(x, y, color, amount, power) {
@@ -2373,7 +2516,7 @@ function drawBackground() {
     canvas.width
   );
 
-  bg.addColorStop(0, wave >= 50 ? "#28051f" : "#121a38");
+  bg.addColorStop(0, wave >= 50 || save.chaosUnlocked ? "#28051f" : "#121a38");
   bg.addColorStop(0.55, "#080d22");
   bg.addColorStop(1, "#03050d");
 
@@ -2411,16 +2554,23 @@ function drawBackground() {
 
 function drawHazards() {
   for (const h of hazards) {
-    if (h.type === "half") {
-      let active = h.timer > h.warning;
+    if (h.type === "quadrantBeam") {
+      const rect = getQuadrantRect(h.quadrant);
+      const active = h.timer > h.warning;
 
-      ctx.globalAlpha = active ? 0.45 : 0.18;
+      ctx.globalAlpha = active ? 0.42 : 0.18;
       ctx.fillStyle = h.color;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
-      if (h.side === "left") ctx.fillRect(0, 0, canvas.width / 2, canvas.height);
-      if (h.side === "right") ctx.fillRect(canvas.width / 2, 0, canvas.width / 2, canvas.height);
-      if (h.side === "top") ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
-      if (h.side === "bottom") ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+      ctx.globalAlpha = active ? 0.85 : 0.35;
+      ctx.fillStyle = "#ffffff";
+
+      const beamCount = 8;
+      for (let i = 0; i < beamCount; i++) {
+        const bx = rect.x + (i + 0.5) * (rect.w / beamCount);
+        const fall = active ? rect.h : (h.timer / h.warning) * rect.h;
+        ctx.fillRect(bx - 7, rect.y, 14, fall);
+      }
 
       ctx.globalAlpha = 1;
     }
@@ -2564,7 +2714,7 @@ function drawEnemyShape(e) {
 
 function drawBossShape(e) {
   if (e.bossType === "FINAL") {
-    drawFinalFlowerBoss(0, 0, e.downed ? 0.75 : 1, e.color);
+    drawFinalFlowerBoss(0, 0, e.downed ? 0.78 : 1.15, e.color);
     return;
   }
 
@@ -2575,6 +2725,17 @@ function drawBossShape(e) {
 
   if (e.bossType === "RAVAGER_2") {
     drawRavagerAwakenedShape(0, 0, e.r, e.color);
+    return;
+  }
+
+  if (
+    e.bossType === "RAVAGER_ECHO" ||
+    e.bossType === "RAVAGER_BURNING" ||
+    e.bossType === "RAVAGER_VOID" ||
+    e.bossType === "RAVAGER_IRON" ||
+    e.bossType === "RAVAGER_CROWNED"
+  ) {
+    drawRavagerEchoShape(0, 0, e.r, e.color, e.bossType);
     return;
   }
 
@@ -2731,43 +2892,83 @@ function drawRavagerAwakenedShape(x, y, r, color) {
   ctx.restore();
 }
 
+function drawRavagerEchoShape(x, y, r, color, type) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(performance.now() / 600);
+
+  ctx.fillStyle = color;
+
+  const spikes = type === "RAVAGER_CROWNED" ? 16 : 12;
+
+  ctx.beginPath();
+  for (let i = 0; i < spikes; i++) {
+    const a = (i * Math.PI * 2) / spikes;
+    const rr = i % 2 === 0 ? r * 1.2 : r * 0.6;
+    const px = Math.cos(a) * rr;
+    const py = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#111827";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = type === "RAVAGER_VOID" ? "#ffffff" : "#ffde59";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (type === "RAVAGER_CROWNED") {
+    ctx.fillStyle = "#ffde59";
+    ctx.fillRect(-r * 0.45, -r * 1.25, r * 0.9, r * 0.22);
+  }
+
+  ctx.restore();
+}
+
 function drawFinalFlowerBoss(x, y, scale, color) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
 
-  const t = performance.now() / 700;
+  const t = performance.now() / 420;
+  const flicker = Math.sin(performance.now() / 45) > 0 ? color : "#ffffff";
 
-  ctx.fillStyle = color;
-  ctx.shadowBlur = 35;
-  ctx.shadowColor = color;
+  ctx.fillStyle = flicker;
+  ctx.shadowBlur = 40;
+  ctx.shadowColor = flicker;
 
-  for (let i = 0; i < 10; i++) {
-    const a = t + (i * Math.PI * 2) / 10;
+  for (let i = 0; i < 12; i++) {
+    const a = t + (i * Math.PI * 2) / 12;
     ctx.save();
     ctx.rotate(a);
     ctx.beginPath();
-    ctx.ellipse(0, -85, 28, 90, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -95, 30, 105, Math.sin(t + i) * 0.25, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
   ctx.fillStyle = "#200014";
   ctx.beginPath();
-  ctx.arc(0, 0, 66, 0, Math.PI * 2);
+  ctx.arc(0, 0, 72, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#ffde59";
-  for (let i = 0; i < 5; i++) {
-    const a = t * 1.5 + (i * Math.PI * 2) / 5;
+  for (let i = 0; i < 7; i++) {
+    const a = t * 1.7 + (i * Math.PI * 2) / 7;
     ctx.beginPath();
-    ctx.arc(Math.cos(a) * 28, Math.sin(a) * 28, 10, 0, Math.PI * 2);
+    ctx.arc(Math.cos(a) * 33, Math.sin(a) * 33, 9, 0, Math.PI * 2);
     ctx.fill();
   }
 
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.arc(0, 0, 14, 0, Math.PI * 2);
+  ctx.arc(0, 0, 15 + Math.sin(performance.now() / 60) * 4, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.shadowBlur = 0;
@@ -2911,7 +3112,7 @@ function drawBossHealthBar() {
   if (boss.bossType === "FINAL" && !boss.downed) {
     ctx.font = "13px Arial";
     ctx.fillStyle = "#c7d4ff";
-    ctx.fillText("Final boss takes heavy damage only when downed by an orb", canvas.width / 2, y + 43);
+    ctx.fillText("SHIELDED: collect the orb to knock it down", canvas.width / 2, y + 43);
   }
 }
 
@@ -2955,6 +3156,47 @@ function drawBossWarningOverlay() {
   ctx.restore();
 }
 
+function drawCutscene() {
+  if (!cutscene) return;
+
+  const current = cutscene.lines[cutscene.index];
+  const pulse = 1 + Math.sin(performance.now() / 120) * 0.04;
+
+  ctx.fillStyle = "rgba(0,0,0,0.74)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (current.kind === "ravager_dead") {
+    drawRavagerCorpse(canvas.width / 2, canvas.height / 2 + 70, 1);
+  }
+
+  if (current.kind === "ravager_awaken") {
+    drawRavagerCorpse(canvas.width / 2, canvas.height / 2 + 70, pulse);
+    burstVisual(canvas.width / 2, canvas.height / 2 + 70, "#ff2f88", 18);
+  }
+
+  if (current.kind === "final") {
+    drawFinalFlowerBoss(canvas.width / 2, canvas.height / 2 - 80, 1.1 * pulse, "#ff2f88");
+  }
+
+  if (current.kind === "final_explode") {
+    drawFinalFlowerBoss(canvas.width / 2, canvas.height / 2 - 50, 1.2 * pulse, "#ffffff");
+    burstVisual(canvas.width / 2, canvas.height / 2 - 50, "#ff2f88", 35);
+    burstVisual(canvas.width / 2, canvas.height / 2 - 50, "#ffde59", 25);
+  }
+
+  ctx.textAlign = "center";
+  ctx.shadowBlur = 22;
+  ctx.shadowColor = current.color || "#ff3b93";
+  ctx.fillStyle = current.color || "#ffffff";
+  ctx.font = "bold " + (current.size || 34) + "px Arial";
+  ctx.fillText(current.text, canvas.width / 2, canvas.height / 2 - 150);
+
+  ctx.shadowBlur = 0;
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#c7d4ff";
+  ctx.fillText("Press ENTER to skip line", canvas.width / 2, canvas.height - 60);
+}
+
 function drawMenu() {
   ctx.fillStyle = "rgba(0,0,0,0.72)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2973,7 +3215,7 @@ function drawMenu() {
   ctx.shadowBlur = 0;
   ctx.font = "20px Arial";
   ctx.fillStyle = "#cfe7ff";
-  ctx.fillText("Public Edition • Wave 25 Ravager • Wave 50 Final Boss", canvas.width / 2, canvas.height / 2 - 180);
+  ctx.fillText("Public Edition V2 • Ravager Story • Chaos Mode", canvas.width / 2, canvas.height / 2 - 180);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 24px Arial";
@@ -3001,7 +3243,7 @@ function drawMenu() {
     canvas.height / 2 + 150
   );
   ctx.fillText("Achievements: " + unlocked + " / " + total, canvas.width / 2, canvas.height / 2 + 178);
-  ctx.fillText("Wave 10: Evolutions • Wave 25: Void • Wave 50: Overlord + Chaos", canvas.width / 2, canvas.height / 2 + 206);
+  ctx.fillText("Wave 10: Evolutions • Wave 25: Void • Wave 50: Chaos + Overlord", canvas.width / 2, canvas.height / 2 + 206);
 }
 
 function drawGameOver() {
