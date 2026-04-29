@@ -296,7 +296,24 @@ function playSound(freq, duration, type, volume) {
   osc.start();
   osc.stop(audioCtx.currentTime + duration);
 }
+function lockPlayerInBounds() {
+  if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+    player.dashTimer = 0;
+    return;
+  }
 
+  const oldX = player.x;
+  const oldY = player.y;
+
+  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+
+  if (player.x !== oldX || player.y !== oldY) {
+    player.dashTimer = 0;
+  }
+}
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
@@ -1580,6 +1597,7 @@ if (
 }
 
 player.invincible -= dt;
+  lockPlayerInBounds();
   if (mouse.down || keys[" "]) shoot(now);
 
   updateBullets(dt);
@@ -1588,6 +1606,7 @@ player.invincible -= dt;
   updateOrbs(dt);
   handleCollisions();
   cleanObjects(dt);
+  lockPlayerInBounds();
 
   if (godMode) player.hp = player.maxHp;
 
