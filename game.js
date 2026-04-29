@@ -1,14 +1,15 @@
 // =====================================================
-// NEON BOSS SHOOTER: PUBLIC EDITION V2
-// Paste this entire file into game.js
-// No <script> tags needed.
+// NEON BOSS SHOOTER - FINAL PLAYTEST BUILD
+// Paste PART 1 + PART 2 together into game.js
+// No <script> tags.
 // =====================================================
 
+(() => {
+"use strict";
 
-// =====================================================
-// SETUP
-// =====================================================
-
+// ==========================
+// PAGE SETUP
+// ==========================
 document.body.innerHTML = "";
 document.body.style.margin = "0";
 document.body.style.overflow = "hidden";
@@ -31,36 +32,35 @@ hint.style.fontSize = "13px";
 hint.style.pointerEvents = "none";
 hint.style.textShadow = "0 0 8px #000";
 hint.textContent =
-  "WASD/Arrows move • Click/Space shoot • Q/E weapon • Shift/X dash • 1 ability • Enter start • M upgrades • C characters • A achievements";
+  "WASD/Arrows move • Click/Space shoot • Q/E weapon • Shift/X dash • 1 ability • Enter start • M shop • C characters • A achievements • V corrupted";
 document.body.appendChild(hint);
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
 }
+addEventListener("resize", resize);
 resize();
-window.addEventListener("resize", resize);
 
-
-// =====================================================
+// ==========================
 // SAVE
-// =====================================================
+// ==========================
+const SAVE_KEY = "neonBossShooterFinalPlaytestV1";
 
-const SAVE_KEY = "neonBossShooterPublicV2";
-
-let save =
-  JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {
-    coins: 0,
-    costs: { damage: 10, fireRate: 10, health: 10, speed: 10 },
-    upgrades: { damage: 0, fireRate: 0, health: 0, speed: 0 },
-    achievements: {},
-    ownedCharacters: ["CORE"],
-    selectedCharacter: "CORE",
-    bestWave: 1,
-    milestones: {},
-    evolutionUnlocked: false,
-    chaosUnlocked: false
-  };
+let save = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {
+  coins: 0,
+  costs: { damage: 10, fireRate: 10, health: 10, speed: 10 },
+  upgrades: { damage: 0, fireRate: 0, health: 0, speed: 0 },
+  achievements: {},
+  ownedCharacters: ["CORE"],
+  selectedCharacter: "CORE",
+  bestWave: 1,
+  milestones: {},
+  evolutionUnlocked: false,
+  chaosUnlocked: false,
+  corruptedUnlocked: false,
+  corruptedMode: false
+};
 
 if (!save.costs) save.costs = { damage: 10, fireRate: 10, health: 10, speed: 10 };
 if (!save.upgrades) save.upgrades = { damage: 0, fireRate: 0, health: 0, speed: 0 };
@@ -71,224 +71,93 @@ if (!save.bestWave) save.bestWave = 1;
 if (!save.milestones) save.milestones = {};
 if (save.evolutionUnlocked === undefined) save.evolutionUnlocked = false;
 if (save.chaosUnlocked === undefined) save.chaosUnlocked = false;
+if (save.corruptedUnlocked === undefined) save.corruptedUnlocked = false;
+if (save.corruptedMode === undefined) save.corruptedMode = false;
 
 function saveGame() {
   localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 }
-saveGame();
 
-
-// =====================================================
-// INPUT / AUDIO
-// =====================================================
-
-let keys = {};
-let mouse = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  down: false
-};
-
-function resetControls() {
-  keys = {};
-  mouse.down = false;
-}
-
-let audioCtx = null;
-
-function unlockAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-}
-
-function playSound(freq, duration, type, volume) {
-  if (!audioCtx) return;
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = type || "sine";
-  osc.frequency.value = freq;
-
-  gain.gain.setValueAtTime(volume || 0.04, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(
-    0.001,
-    audioCtx.currentTime + duration
-  );
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration);
-}
-
-
-// =====================================================
+// ==========================
 // DATA
-// =====================================================
+// ==========================
+const UPGRADE_CAPS = {
+  damage: 4,
+  fireRate: 4,
+  health: 4,
+  speed: 4
+};
 
 const achievementList = {
   firstBlood: "First Blood - Defeat your first enemy",
   firstBoss: "Boss Slayer - Defeat your first boss",
-  wave10: "Evolution Core - Reach wave 10 and unlock weapon evolutions",
-  wave25: "The Ravager - Survive wave 25",
-  ravagerDead: "It Was Not Dead - Defeat Ravager's awakened form",
+  wave10: "Evolution Core - Reach wave 10",
+  wave25: "The Ravager - Defeat wave 25",
   wave50: "The End Arrives - Reach wave 50",
   finalBoss: "Worldbreaker - Defeat the final boss",
   chaos: "Chaos Begins - Unlock chaos mode",
-  allWeapons: "Arsenal - Unlock every weapon in one run",
+  corrupted: "Nightmare Signal - Unlock corrupted mode",
   firstShop: "Investor - Buy your first permanent upgrade",
+  speedster: "Speedster - Buy 3 speed upgrades",
   rich: "Rich Core - Hold 50 permanent coins",
-  speedster: "Speedster - Buy 3 permanent speed upgrades",
-  glassCannon: "Glass Cannon - Reach 3.0 damage in a run",
-  rpgFound: "Boom Time - Unlock the RPG",
   firstCharacter: "New Hero - Buy your first character",
   voidUnlocked: "Void Opened - Unlock Void",
   overlordUnlocked: "Boss Reborn - Unlock Overlord"
 };
 
 const weaponData = {
-  PISTOL: { color: "#7dfcff", cooldown: 0.15, sound: 840 },
+  PISTOL:  { color: "#7dfcff", cooldown: 0.15, sound: 840 },
   SHOTGUN: { color: "#ffd36a", cooldown: 0.62, sound: 230 },
-  BURST: { color: "#a77dff", cooldown: 0.42, sound: 620 },
-  LASER: { color: "#ff5eec", cooldown: 0.08, sound: 980 },
+  BURST:   { color: "#a77dff", cooldown: 0.42, sound: 620 },
+  LASER:   { color: "#ff5eec", cooldown: 0.12, sound: 980 },
   MINIGUN: { color: "#63ff8b", cooldown: 0.055, sound: 520 },
-  RPG: { color: "#ff9f43", cooldown: 0.95, sound: 150 },
+  RPG:     { color: "#ff9f43", cooldown: 0.95, sound: 150 },
   RAILGUN: { color: "#ffffff", cooldown: 0.82, sound: 1100 },
-  FLAMER: { color: "#ff4d2e", cooldown: 0.045, sound: 180 },
-  SPARK: { color: "#7dfcff", cooldown: 0.11, sound: 760 },
-  ORBIT: { color: "#b28cff", cooldown: 0.2, sound: 650 }
+  FLAMER:  { color: "#ff4d2e", cooldown: 0.045, sound: 180 },
+  SPARK:   { color: "#7dfcff", cooldown: 0.165, sound: 760 },
+  ORBIT:   { color: "#b28cff", cooldown: 0.20, sound: 650 }
 };
 
 const characterData = {
   CORE: {
-    name: "Core",
-    cost: 0,
-    color: "#65b7ff",
-    ring: "#7dfcff",
-    startWeapon: "PISTOL",
-    maxHp: 115,
-    speed: 270,
-    damage: 1.25,
-    fireRateBonus: 0,
-    armor: 0,
-    passive: "Balanced stats.",
-    manual: "Quick heal.",
-    abilityCooldown: 18
+    name: "Core", cost: 0, color: "#65b7ff", ring: "#7dfcff", startWeapon: "PISTOL",
+    maxHp: 115, speed: 270, damage: 1.25, fireRateBonus: 0, armor: 0,
+    passive: "Balanced.", manual: "Small heal.", abilityCooldown: 24
   },
-
   BLAZE: {
-    name: "Blaze",
-    cost: 25,
-    color: "#ff6b3d",
-    ring: "#ffde59",
-    startWeapon: "FLAMER",
-    maxHp: 100,
-    speed: 260,
-    damage: 1.5,
-    fireRateBonus: 0.01,
-    armor: 0,
-    passive: "High damage, lower health.",
-    manual: "Fire nova explosion.",
-    abilityCooldown: 20
+    name: "Blaze", cost: 125, color: "#ff6b3d", ring: "#ffde59", startWeapon: "FLAMER",
+    maxHp: 100, speed: 260, damage: 1.5, fireRateBonus: 0.01, armor: 0,
+    passive: "High damage.", manual: "Fire nova.", abilityCooldown: 20
   },
-
   VOLT: {
-    name: "Volt",
-    cost: 30,
-    color: "#7dfcff",
-    ring: "#ffffff",
-    startWeapon: "SPARK",
-    maxHp: 90,
-    speed: 310,
-    damage: 1.1,
-    fireRateBonus: 0.04,
-    armor: 0,
-    passive: "Fast movement and fire rate.",
-    manual: "Slow time briefly.",
-    abilityCooldown: 24
+    name: "Volt", cost: 150, color: "#7dfcff", ring: "#ffffff", startWeapon: "SPARK",
+    maxHp: 90, speed: 310, damage: 1.1, fireRateBonus: 0.04, armor: 0,
+    passive: "Fast.", manual: "Slow time.", abilityCooldown: 24
   },
-
   TANK: {
-    name: "Tank",
-    cost: 35,
-    color: "#6cff7a",
-    ring: "#b6ffca",
-    startWeapon: "RPG",
-    maxHp: 175,
-    speed: 225,
-    damage: 1.18,
-    fireRateBonus: 0,
-    armor: 4,
-    passive: "Huge HP and armor, slower speed.",
-    manual: "Temporary shield.",
-    abilityCooldown: 25
+    name: "Tank", cost: 175, color: "#6cff7a", ring: "#b6ffca", startWeapon: "RPG",
+    maxHp: 175, speed: 225, damage: 1.18, fireRateBonus: 0, armor: 4,
+    passive: "Tanky.", manual: "Shield.", abilityCooldown: 25
   },
-
   GHOST: {
-    name: "Ghost",
-    cost: 40,
-    color: "#b28cff",
-    ring: "#ff5eec",
-    startWeapon: "BURST",
-    maxHp: 85,
-    speed: 345,
-    damage: 1.15,
-    fireRateBonus: 0.015,
-    armor: 0,
-    passive: "Extreme speed, lower HP.",
-    manual: "Invincible ghost mode.",
-    abilityCooldown: 22
+    name: "Ghost", cost: 250, color: "#b28cff", ring: "#ff5eec", startWeapon: "BURST",
+    maxHp: 85, speed: 345, damage: 1.15, fireRateBonus: 0.015, armor: 0,
+    passive: "Very fast.", manual: "Ghost mode.", abilityCooldown: 22
   },
-
   NOVA: {
-    name: "Nova",
-    cost: 50,
-    color: "#ffffff",
-    ring: "#ff5eec",
-    startWeapon: "RAILGUN",
-    maxHp: 100,
-    speed: 255,
-    damage: 1.7,
-    fireRateBonus: 0,
-    armor: 1,
-    passive: "Very high damage, slower weapon.",
-    manual: "Overcharge damage boost.",
-    abilityCooldown: 28
+    name: "Nova", cost: 250, color: "#ffffff", ring: "#ff5eec", startWeapon: "RAILGUN",
+    maxHp: 100, speed: 255, damage: 1.7, fireRateBonus: 0, armor: 1,
+    passive: "Glass cannon.", manual: "Overcharge.", abilityCooldown: 28
   },
-
   VOID: {
-    name: "Void",
-    cost: 0,
-    color: "#2b114f",
-    ring: "#b28cff",
-    startWeapon: "ORBIT",
-    maxHp: 120,
-    speed: 295,
-    damage: 1.35,
-    fireRateBonus: 0.02,
-    armor: 1,
-    passive: "Unlocked at wave 25.",
-    manual: "Void pull damages nearby enemies.",
-    abilityCooldown: 24
+    name: "Void", cost: 0, color: "#2b114f", ring: "#b28cff", startWeapon: "ORBIT",
+    maxHp: 120, speed: 295, damage: 1.35, fireRateBonus: 0.02, armor: 1,
+    passive: "Wave 25 unlock.", manual: "Void pull.", abilityCooldown: 24
   },
-
   OVERLORD: {
-    name: "Overlord",
-    cost: 0,
-    color: "#ff2f88",
-    ring: "#ffde59",
-    startWeapon: "RPG",
-    maxHp: 145,
-    speed: 265,
-    damage: 1.6,
-    fireRateBonus: 0.015,
-    armor: 2,
-    passive: "Unlocked by beating the final boss.",
-    manual: "Boss rage: damage + shield.",
-    abilityCooldown: 30
+    name: "Overlord", cost: 0, color: "#ff2f88", ring: "#ffde59", startWeapon: "RPG",
+    maxHp: 145, speed: 265, damage: 1.6, fireRateBonus: 0.015, armor: 2,
+    passive: "Wave 50 unlock.", manual: "Boss rage.", abilityCooldown: 30
   }
 };
 
@@ -316,31 +185,20 @@ const bossNames = {
 };
 
 const bossCycle = [
-  "CHARGER",
-  "DASHLINE",
-  "BULLET_HELL",
-  "TANK_BOSS",
-  "SPLITTER",
-  "SUMMONER",
-  "SPIRAL",
-  "SNIPER",
-  "PULSER",
-  "MIRROR",
-  "HYBRID"
+  "CHARGER", "DASHLINE", "BULLET_HELL", "TANK_BOSS", "SPLITTER",
+  "SUMMONER", "SPIRAL", "SNIPER", "PULSER", "MIRROR", "HYBRID"
 ];
 
 const ravagerEchoCycle = [
-  "RAVAGER_ECHO",
-  "RAVAGER_BURNING",
-  "RAVAGER_VOID",
-  "RAVAGER_IRON",
-  "RAVAGER_CROWNED"
+  "RAVAGER_ECHO", "RAVAGER_BURNING", "RAVAGER_VOID", "RAVAGER_IRON", "RAVAGER_CROWNED"
 ];
 
-
-// =====================================================
+// ==========================
 // STATE
-// =====================================================
+// ==========================
+let keys = {};
+let mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+let audioCtx = null;
 
 let state = "menu";
 let wave = 1;
@@ -357,11 +215,10 @@ let screenShake = 0;
 let bossWarningTimer = 0;
 let pendingBossType = null;
 let currentBossName = "";
-let enemiesKilledThisRun = 0;
-let bossesKilledThisRun = 0;
 let wave25Stage = 0;
 let finalStarted = false;
 let finalDownTimer = 0;
+let godMode = false;
 
 for (let i = 0; i < 160; i++) {
   stars.push({
@@ -374,156 +231,291 @@ for (let i = 0; i < 160; i++) {
 }
 
 let player = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  r: 18,
-  hp: 100,
-  maxHp: 100,
-  speed: 260,
-  damage: 1.2,
-  weaponIndex: 0,
-  weapons: ["PISTOL"],
-  lastShot: 0,
-  bulletSpeed: 760,
-  dashCooldown: 1.1,
-  lastDash: -99,
-  invincible: 0,
-  fireRateBonus: 0,
-  pelletBonus: 0,
-  armor: 0,
-  abilityCooldown: 18,
-  lastAbility: -999,
-  shieldTimer: 0,
-  slowTimeTimer: 0,
-  ghostTimer: 0,
-  overchargeTimer: 0,
-  rageTimer: 0
+  x: canvas.width / 2, y: canvas.height / 2, r: 18,
+  hp: 100, maxHp: 100, speed: 260, damage: 1.2,
+  weaponIndex: 0, weapons: ["PISTOL"], lastShot: 0, bulletSpeed: 760,
+  dashCooldown: 3.3, lastDash: -99, invincible: 0,
+  fireRateBonus: 0, pelletBonus: 0, armor: 0,
+  abilityCooldown: 18, lastAbility: -999,
+  shieldTimer: 0, slowTimeTimer: 0, ghostTimer: 0, overchargeTimer: 0, rageTimer: 0,
+  critChance: 0, vampireCore: false, shieldBreaker: false, orbRunner: false, beamResist: false,
+  killsSinceHeal: 0
 };
 
+// ==========================
+// UTIL
+// ==========================
+function resetControls() {
+  keys = {};
+  mouse.down = false;
+}
 
-// =====================================================
-// EVENTS
-// =====================================================
+function unlockAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
 
-window.addEventListener("keydown", function (e) {
+function playSound(freq, duration, type, volume) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume || 0.04, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function floatingText(x, y, text, color, size) {
+  floatingTexts.push({ x, y, text, color, size, life: 1.35 });
+}
+
+function burst(x, y, color, amount, power) {
+  for (let i = 0; i < amount; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = Math.random() * power + 40;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      r: Math.random() * 4 + 2,
+      color,
+      life: 0.5 + Math.random() * 0.45
+    });
+  }
+}
+
+function burstVisual(x, y, color, amount) {
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = color;
+  for (let i = 0; i < amount; i++) {
+    const a = (i / amount) * Math.PI * 2;
+    const r = 70 + Math.sin(performance.now() / 120 + i) * 20;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function unlockAchievement(id) {
+  if (save.achievements[id]) return;
+  save.achievements[id] = true;
+  save.coins += 5;
+  saveGame();
+  floatingText(canvas.width / 2, canvas.height / 2 - 115, "ACHIEVEMENT: " + achievementList[id] + " (+5)", "#ffde59", 20);
+  playSound(900, 0.18, "triangle", 0.07);
+}
+
+// ==========================
+// CORRUPTED / VOID TRAITS
+// ==========================
+function getCorruptionLevel() {
+  if (!save.corruptedMode) return 0;
+  return Math.max(1, Math.floor((wave - 1) / 5) + 1);
+}
+
+function getVoidLevel() {
+  if (save.corruptedMode) return 0;
+  if (wave <= 50 && !save.chaosUnlocked) return 0;
+  return 1;
+}
+
+function applyEnemyTraits(enemy) {
+  const corruption = getCorruptionLevel();
+  const voidLevel = getVoidLevel();
+
+  enemy.corrupted = false;
+  enemy.voided = false;
+
+  if (voidLevel > 0) {
+    enemy.voided = true;
+    enemy.hp *= 1.1;
+    enemy.maxHp *= 1.1;
+    enemy.speed *= 1.08;
+    enemy.damage *= 1.08;
+    if (!enemy.boss) enemy.color = "#6b3cff";
+  }
+
+  if (corruption > 0) {
+    enemy.corrupted = true;
+    const hpMult = 1 + corruption * 0.18;
+    const speedMult = 1 + corruption * 0.12;
+    const damageMult = 1 + corruption * 0.12;
+    enemy.hp *= hpMult;
+    enemy.maxHp *= hpMult;
+    enemy.speed *= speedMult;
+    enemy.damage *= damageMult;
+    enemy.color = enemy.boss ? "#b000ff" : "#c026ff";
+
+    if (enemy.type === "shooter") {
+      enemy.shootCooldown *= Math.max(0.45, 1 - corruption * 0.08);
+      enemy.bulletSpeed *= 1 + corruption * 0.08;
+    }
+  }
+}
+
+// ==========================
+// INPUT
+// ==========================
+addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   keys[k] = true;
   unlockAudio();
 
+  if (e.key === "F1") {
+    e.preventDefault();
+    openDevConsole();
+    return;
+  }
+
   if (k === "q") {
-    player.weaponIndex--;
-    if (player.weaponIndex < 0) player.weaponIndex = player.weapons.length - 1;
+    player.weaponIndex = (player.weaponIndex - 1 + player.weapons.length) % player.weapons.length;
     playSound(420, 0.05, "square", 0.04);
   }
 
   if (k === "e") {
-    player.weaponIndex++;
-    if (player.weaponIndex >= player.weapons.length) player.weaponIndex = 0;
+    player.weaponIndex = (player.weaponIndex + 1) % player.weapons.length;
     playSound(520, 0.05, "square", 0.04);
   }
 
   if (k === "m" && state === "menu") openMainMenuShop();
   if (k === "c" && state === "menu") openCharacterShop();
   if (k === "a" && state === "menu") showAchievements();
+
+  if (k === "v" && state === "menu") {
+    if (!save.corruptedUnlocked) {
+      alert("Corrupted Mode unlocks after defeating Worldbreaker at wave 50.");
+    } else {
+      save.corruptedMode = !save.corruptedMode;
+      saveGame();
+      alert("Corrupted Mode: " + (save.corruptedMode ? "ON" : "OFF"));
+    }
+    resetControls();
+  }
+
   if (k === "1" && state === "playing") useCharacterAbility();
 
-  if ((state === "menu" || state === "dead") && e.key === "Enter") {
-    startGame();
-  }
+  if ((state === "menu" || state === "dead") && e.key === "Enter") startGame();
 
-  if (state === "cutscene" && e.key === "Enter" && cutscene) {
-    cutscene.timer = 999;
-  }
+  if (state === "cutscene" && e.key === "Enter" && cutscene) cutscene.timer = 999;
 });
 
-window.addEventListener("keyup", function (e) {
+addEventListener("keyup", e => {
   keys[e.key.toLowerCase()] = false;
 });
 
-canvas.addEventListener("mousemove", function (e) {
+canvas.addEventListener("mousemove", e => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
 });
 
-canvas.addEventListener("mousedown", function () {
+canvas.addEventListener("mousedown", () => {
   mouse.down = true;
   unlockAudio();
 });
 
-canvas.addEventListener("mouseup", function () {
-  mouse.down = false;
-});
+canvas.addEventListener("mouseup", () => mouse.down = false);
 
-canvas.addEventListener("touchstart", function (e) {
-  e.preventDefault();
-  unlockAudio();
-  mouse.down = true;
-  const t = e.touches[0];
-  mouse.x = t.clientX;
-  mouse.y = t.clientY;
-});
+// ==========================
+// SECRET DEV CONSOLE
+// ==========================
+function openDevConsole() {
+  const pw = prompt("...");
+  resetControls();
 
-canvas.addEventListener("touchmove", function (e) {
-  e.preventDefault();
-  const t = e.touches[0];
-  mouse.x = t.clientX;
-  mouse.y = t.clientY;
-});
+  if (pw !== "Neondevshooterdoggoz") return;
 
-canvas.addEventListener("touchend", function (e) {
-  e.preventDefault();
-  mouse.down = false;
-});
-
-
-// =====================================================
-// SHOPS / ACHIEVEMENTS
-// =====================================================
-
-function unlockAchievement(id) {
-  if (save.achievements[id]) return;
-
-  save.achievements[id] = true;
-  save.coins += 5;
-  saveGame();
-
-  floatingText(
-    canvas.width / 2,
-    canvas.height / 2 - 115,
-    "ACHIEVEMENT: " + achievementList[id] + " (+5 coins)",
-    "#ffde59",
-    20
+  let cmd = prompt(
+    "Input:\n\n" +
+    "wave25\n" +
+    "wave50\n" +
+    "coins100\n" +
+    "unlockall\n" +
+    "god\n" +
+    "reset"
   );
 
-  playSound(900, 0.18, "triangle", 0.07);
+  resetControls();
+  if (!cmd) return;
+  cmd = cmd.toLowerCase();
+
+  if (cmd === "wave25") {
+    startGame();
+    wave = 25;
+    save.milestones.wave25 = false;
+    spawnWave();
+  } else if (cmd === "wave50") {
+    startGame();
+    wave = 50;
+    spawnWave();
+  } else if (cmd === "coins100") {
+    save.coins += 100;
+    saveGame();
+    alert("+100 coins");
+  } else if (cmd === "unlockall") {
+    save.ownedCharacters = Object.keys(characterData);
+    save.evolutionUnlocked = true;
+    save.chaosUnlocked = true;
+    save.corruptedUnlocked = true;
+    saveGame();
+    alert("Unlocked.");
+  } else if (cmd === "god") {
+    godMode = !godMode;
+    alert("God mode: " + godMode);
+  } else if (cmd === "reset") {
+    if (confirm("Reset save?")) {
+      localStorage.removeItem(SAVE_KEY);
+      location.reload();
+    }
+  }
 }
 
+// ==========================
+// MENUS / SHOP
+// ==========================
 function showAchievements() {
   let msg = "ACHIEVEMENTS\n\n";
-
   for (const id in achievementList) {
     msg += (save.achievements[id] ? "✅ " : "⬜ ") + achievementList[id] + "\n";
   }
-
-  msg += "\nUnlocked achievements give +5 permanent coins.";
+  msg += "\nAchievements give +5 permanent coins.";
   alert(msg);
   resetControls();
 }
 
 function openMainMenuShop() {
   let shopping = true;
-
   while (shopping) {
     let msg =
       "PERMANENT UPGRADE SHOP\n\n" +
       "Coins: " + save.coins + "\n\n" +
-      "1. Damage +" + save.upgrades.damage + " — Cost: " + save.costs.damage + "\n" +
-      "2. Fire Rate +" + save.upgrades.fireRate + " — Cost: " + save.costs.fireRate + "\n" +
-      "3. Health +" + save.upgrades.health + " — Cost: " + save.costs.health + "\n" +
-      "4. Speed +" + save.upgrades.speed + " — Cost: " + save.costs.speed + "\n" +
+      "1. Damage " + save.upgrades.damage + "/" + UPGRADE_CAPS.damage + " — Cost: " + save.costs.damage + "\n" +
+      "2. Fire Rate " + save.upgrades.fireRate + "/" + UPGRADE_CAPS.fireRate + " — Cost: " + save.costs.fireRate + "\n" +
+      "3. Health " + save.upgrades.health + "/" + UPGRADE_CAPS.health + " — Cost: " + save.costs.health + "\n" +
+      "4. Speed " + save.upgrades.speed + "/" + UPGRADE_CAPS.speed + " — Cost: " + save.costs.speed + "\n" +
       "5. Leave Shop\n\n" +
-      "Each category cost increases by 5 after buying.";
-
+      "All permanent upgrades cap at 4.";
     const choice = prompt(msg);
     resetControls();
 
@@ -537,8 +529,13 @@ function openMainMenuShop() {
 }
 
 function buyPermanentUpgrade(type) {
-  const cost = save.costs[type];
+  if (save.upgrades[type] >= UPGRADE_CAPS[type]) {
+    alert(type + " is already maxed.");
+    resetControls();
+    return;
+  }
 
+  const cost = save.costs[type];
   if (save.coins < cost) {
     alert("Not enough coins. You need " + cost + ".");
     resetControls();
@@ -552,14 +549,12 @@ function buyPermanentUpgrade(type) {
 
   unlockAchievement("firstShop");
   if (save.upgrades.speed >= 3) unlockAchievement("speedster");
-
-  alert(type + " upgraded permanently!");
+  alert(type + " upgraded!");
   resetControls();
 }
 
 function openCharacterShop() {
   const ids = Object.keys(characterData);
-
   let msg = "CHARACTER SHOP\n\n";
   msg += "Coins: " + save.coins + "\n";
   msg += "Selected: " + characterData[save.selectedCharacter].name + "\n\n";
@@ -568,22 +563,13 @@ function openCharacterShop() {
     const id = ids[i];
     const c = characterData[id];
     const owned = save.ownedCharacters.indexOf(id) !== -1;
-
     let status = owned ? "OWNED" : c.cost + " coins";
-
     if (id === "VOID" && !owned) status = "Unlock: beat wave 25";
     if (id === "OVERLORD" && !owned) status = "Unlock: beat wave 50";
 
-    msg +=
-      (i + 1) + ". " +
-      c.name +
-      " | " +
-      status +
-      " | HP " + c.maxHp +
-      " | SPD " + c.speed +
-      " | DMG " + c.damage +
-      " | Start: " + c.startWeapon +
-      "\n";
+    msg += (i + 1) + ". " + c.name + " | " + status +
+      " | HP " + c.maxHp + " | SPD " + c.speed + " | DMG " + c.damage +
+      " | Start: " + c.startWeapon + "\n";
   }
 
   msg += "\nType a number to buy/select.";
@@ -592,7 +578,6 @@ function openCharacterShop() {
   resetControls();
 
   if (choice === null) return;
-
   const index = Number(choice) - 1;
   if (index < 0 || index >= ids.length || Number.isNaN(index)) return;
 
@@ -609,13 +594,13 @@ function openCharacterShop() {
   }
 
   if (id === "VOID") {
-    alert("Void unlocks for free when you defeat the wave 25 Ravager.");
+    alert("Void unlocks when you defeat wave 25 Ravager.");
     resetControls();
     return;
   }
 
   if (id === "OVERLORD") {
-    alert("Overlord unlocks for free when you defeat the final boss at wave 50.");
+    alert("Overlord unlocks when you defeat wave 50 Worldbreaker.");
     resetControls();
     return;
   }
@@ -630,18 +615,14 @@ function openCharacterShop() {
   save.ownedCharacters.push(id);
   save.selectedCharacter = id;
   saveGame();
-
   unlockAchievement("firstCharacter");
-
   alert(c.name + " bought and selected!");
   resetControls();
 }
 
-
-// =====================================================
-// START GAME
-// =====================================================
-
+// ==========================
+// START / CUTSCENES
+// ==========================
 function startGame() {
   state = "playing";
   wave = 1;
@@ -655,8 +636,6 @@ function startGame() {
   bossWarningTimer = 0;
   pendingBossType = null;
   currentBossName = "";
-  enemiesKilledThisRun = 0;
-  bossesKilledThisRun = 0;
   wave25Stage = 0;
   finalStarted = false;
   finalDownTimer = 0;
@@ -666,18 +645,18 @@ function startGame() {
 
   player.x = canvas.width / 2;
   player.y = canvas.height / 2;
-  player.maxHp = char.maxHp + save.upgrades.health * 20;
+  player.maxHp = char.maxHp + save.upgrades.health * 15;
   player.hp = player.maxHp;
-  player.speed = char.speed + save.upgrades.speed * 20;
-  player.damage = char.damage + save.upgrades.damage * 0.25;
+  player.speed = char.speed + save.upgrades.speed * 15;
+  player.damage = char.damage * (1 + save.upgrades.damage * 0.075);
   player.weaponIndex = 0;
   player.weapons = [char.startWeapon];
   player.lastShot = 0;
   player.bulletSpeed = 760;
-  player.dashCooldown = 1.1;
+  player.dashCooldown = 3.3;
   player.lastDash = -99;
   player.invincible = 0;
-  player.fireRateBonus = char.fireRateBonus + save.upgrades.fireRate * 0.01;
+  player.fireRateBonus = char.fireRateBonus + save.upgrades.fireRate * 0.007;
   player.pelletBonus = 0;
   player.armor = char.armor;
   player.abilityCooldown = char.abilityCooldown;
@@ -687,32 +666,26 @@ function startGame() {
   player.ghostTimer = 0;
   player.overchargeTimer = 0;
   player.rageTimer = 0;
+  player.critChance = 0;
+  player.vampireCore = false;
+  player.shieldBreaker = false;
+  player.orbRunner = false;
+  player.beamResist = false;
+  player.killsSinceHeal = 0;
 
   spawnWave();
   playSound(260, 0.12, "sawtooth", 0.06);
 }
 
-
-// =====================================================
-// CUTSCENES
-// =====================================================
-
 function startCutscene(lines, onFinish) {
   state = "cutscene";
-  cutscene = {
-    lines: lines,
-    index: 0,
-    timer: 0,
-    onFinish: onFinish
-  };
+  cutscene = { lines, index: 0, timer: 0, onFinish };
   resetControls();
 }
 
 function updateCutscene(dt) {
   if (!cutscene) return;
-
   cutscene.timer += dt;
-
   const current = cutscene.lines[cutscene.index];
   const duration = current.duration || 2.2;
 
@@ -730,108 +703,101 @@ function updateCutscene(dt) {
 }
 
 function startWave25Intro() {
-  startCutscene(
-    [
-      { text: "WAVE 25", color: "#ffde59", size: 46, duration: 1.4 },
-      { text: "A dead machine blocks the arena...", color: "#c7d4ff", duration: 2.1, kind: "ravager_dead" },
-      { text: "The Ravager is dormant.", color: "#ffffff", duration: 2.0, kind: "ravager_dead" },
-      { text: "Destroy it before it wakes.", color: "#ff5e3b", duration: 2.0, kind: "ravager_dead" }
-    ],
-    function () {
-      spawnBoss("RAVAGER_1", false, false);
-      currentBossName = bossNames.RAVAGER_1;
-      floatingText(canvas.width / 2, 90, "RAVAGER: DORMANT FORM", "#ffde59", 30);
-    }
-  );
+  startCutscene([
+    { text: "WAVE 25", color: "#ffde59", size: 46, duration: 1.4 },
+    { text: "A dead machine blocks the arena...", color: "#c7d4ff", duration: 2.1, kind: "ravager_dead" },
+    { text: "The Ravager is dormant.", color: "#ffffff", duration: 2.0, kind: "ravager_dead" },
+    { text: "Destroy it before it wakes.", color: "#ff5e3b", duration: 2.0, kind: "ravager_dead" }
+  ], function () {
+    spawnBoss("RAVAGER_1", false, false);
+    currentBossName = bossNames.RAVAGER_1;
+    floatingText(canvas.width / 2, 90, "RAVAGER: DORMANT FORM", "#ffde59", 30);
+  });
 }
 
 function startRavagerAwakening() {
-  startCutscene(
-    [
-      { text: "TARGET NEUTRALIZED.", color: "#6cff7a", duration: 1.8, kind: "ravager_dead" },
-      { text: "...", color: "#ffffff", duration: 1.4, kind: "ravager_dead" },
-      { text: "ENERGY SIGNATURE DETECTED.", color: "#ffde59", duration: 2.0, kind: "ravager_awaken" },
-      { text: "THE RAVAGER AWAKENS.", color: "#ff2f88", size: 42, duration: 2.2, kind: "ravager_awaken" }
-    ],
-    function () {
-      spawnBoss("RAVAGER_2", false, false);
-      currentBossName = bossNames.RAVAGER_2;
-      floatingText(canvas.width / 2, 90, "RAVAGER: AWAKENED FORM", "#ff2f88", 34);
-      screenShake = 15;
-    }
-  );
+  startCutscene([
+    { text: "TARGET NEUTRALIZED.", color: "#6cff7a", duration: 1.8, kind: "ravager_dead" },
+    { text: "...", color: "#ffffff", duration: 1.4, kind: "ravager_dead" },
+    { text: "ENERGY SIGNATURE DETECTED.", color: "#ffde59", duration: 2.0, kind: "ravager_awaken" },
+    { text: "THE RAVAGER AWAKENS.", color: "#ff2f88", size: 42, duration: 2.2, kind: "ravager_awaken" }
+  ], function () {
+    spawnBoss("RAVAGER_2", false, false);
+    currentBossName = bossNames.RAVAGER_2;
+    floatingText(canvas.width / 2, 90, "RAVAGER: AWAKENED FORM", "#ff2f88", 34);
+    screenShake = 15;
+  });
 }
 
 function startWave50Intro() {
-  startCutscene(
-    [
-      { text: "WAVE 50", color: "#ffde59", size: 48, duration: 1.4 },
-      { text: "The corpse from wave 25 begins to move.", color: "#c7d4ff", duration: 2.2, kind: "ravager_dead" },
-      { text: "WARNING: FINAL EVOLUTION DETECTED.", color: "#ff5e3b", duration: 2.0, kind: "ravager_awaken" },
-      { text: "IT WAS NEVER DEAD.", color: "#ff2f88", size: 42, duration: 2.2, kind: "ravager_awaken" },
-      { text: "WORLDBREAKER RAVAGER", color: "#ff2f88", size: 46, duration: 2.4, kind: "final" },
-      { text: "It has lost control of its own power.", color: "#ffde59", duration: 2.1, kind: "final" },
-      { text: "Use the fallen orbs to bring it down.", color: "#7dfcff", duration: 2.2, kind: "final" }
-    ],
-    function () {
-      spawnBoss("FINAL", false, false);
-      currentBossName = bossNames.FINAL;
-      finalStarted = true;
-      floatingText(canvas.width / 2, 90, "FINAL BOSS", "#ff2f88", 40);
-      screenShake = 18;
-    }
-  );
+  startCutscene([
+    { text: "WAVE 50", color: "#ffde59", size: 48, duration: 1.4 },
+    { text: "The corpse from wave 25 begins to move.", color: "#c7d4ff", duration: 2.2, kind: "ravager_dead" },
+    { text: "WARNING: FINAL EVOLUTION DETECTED.", color: "#ff5e3b", duration: 2.0, kind: "ravager_awaken" },
+    { text: "IT WAS NEVER DEAD.", color: "#ff2f88", size: 42, duration: 2.2, kind: "ravager_awaken" },
+    { text: "WORLDBREAKER RAVAGER", color: "#ff2f88", size: 46, duration: 2.4, kind: "final" },
+    { text: "YOUR STORED POWER SHATTERS.", color: "#ffde59", duration: 2.0, kind: "final" },
+    { text: "Use the fallen orbs to bring it down.", color: "#7dfcff", duration: 2.2, kind: "final" }
+  ], function () {
+    spawnBoss("FINAL", false, false);
+    currentBossName = bossNames.FINAL;
+    finalStarted = true;
+    floatingText(canvas.width / 2, 90, "FINAL BOSS", "#ff2f88", 40);
+    screenShake = 18;
+  });
 }
-
 function startFinalEndingCutscene() {
-  startCutscene(
-    [
-      { text: "WORLDBREAKER RAVAGER DEFEATED", color: "#ffffff", size: 42, duration: 2.2, kind: "final_explode" },
-      { text: "The core shattered...", color: "#7dfcff", duration: 2.1, kind: "final_explode" },
-      { text: "For one second, the neon world went silent.", color: "#c7d4ff", duration: 2.4, kind: "dark" },
-      { text: "But the silence did not last.", color: "#ff5e3b", duration: 2.2, kind: "dark" },
-      { text: "Fragments of the Ravager scattered into every wave.", color: "#ffde59", duration: 2.8, kind: "final_explode" },
-      { text: "CHAOS MODE UNLOCKED", color: "#ff2f88", size: 48, duration: 2.3, kind: "final_explode" },
-      { text: "Every wave now carries two corrupted bosses.", color: "#ffffff", duration: 2.5, kind: "final_explode" },
-      { text: "Every 5 waves, a Ravager Echo returns.", color: "#b28cff", duration: 2.5, kind: "final_explode" }
-    ],
-    function () {
-      save.chaosUnlocked = true;
+  bullets = [];
+  hazards = [];
+  orbs = [];
+  particles = [];
 
-      if (save.ownedCharacters.indexOf("OVERLORD") === -1) {
-        save.ownedCharacters.push("OVERLORD");
-      }
+  for (let i = 0; i < 160; i++) {
+    burst(canvas.width / 2, canvas.height / 2 - 60, i % 2 ? "#ff2f88" : "#ffde59", 1, 700);
+  }
 
-      save.coins += 100;
-      saveGame();
+  startCutscene([
+    { text: "WORLDBREAKER RAVAGER DEFEATED", color: "#ffffff", size: 42, duration: 2.2, kind: "final_explode" },
+    { text: "The core shattered...", color: "#7dfcff", duration: 2.1, kind: "final_explode" },
+    { text: "For one second, the neon world went silent.", color: "#c7d4ff", duration: 2.4, kind: "dark" },
+    { text: "But the silence did not last.", color: "#ff5e3b", duration: 2.2, kind: "dark" },
+    { text: "Fragments of the Ravager scattered into every wave.", color: "#ffde59", duration: 2.8, kind: "final_explode" },
+    { text: "CHAOS MODE UNLOCKED", color: "#ff2f88", size: 48, duration: 2.3, kind: "final_explode" },
+    { text: "Corrupted Mode has awakened.", color: "#b000ff", duration: 2.4, kind: "final_explode" }
+  ], function () {
+    save.chaosUnlocked = true;
+    save.corruptedUnlocked = true;
 
-      unlockAchievement("finalBoss");
-      unlockAchievement("chaos");
-      unlockAchievement("overlordUnlocked");
-
-      alert(
-        "FINAL BOSS DEFEATED!\n\n" +
-        "CHAOS MODE UNLOCKED!\n" +
-        "+100 permanent coins!\n" +
-        "Secret character unlocked: OVERLORD!\n\n" +
-        "Chaos Mode rules:\n" +
-        "- Double bosses every wave\n" +
-        "- Ravager Echo every 5 waves"
-      );
-
-      resetControls();
-      wave++;
-      state = "playing";
-      spawnWave();
+    if (save.ownedCharacters.indexOf("OVERLORD") === -1) {
+      save.ownedCharacters.push("OVERLORD");
     }
-  );
+
+    save.coins += 100;
+    saveGame();
+
+    unlockAchievement("finalBoss");
+    unlockAchievement("chaos");
+    unlockAchievement("corrupted");
+    unlockAchievement("overlordUnlocked");
+
+    alert(
+      "FINAL BOSS DEFEATED!\n\n" +
+      "Chaos Mode unlocked!\n" +
+      "Corrupted Mode unlocked!\n" +
+      "+100 permanent coins!\n" +
+      "Overlord unlocked!"
+    );
+
+    resetControls();
+    wave++;
+    state = "playing";
+    spawnWave();
+  });
 }
 
-
-// =====================================================
-// WAVES
-// =====================================================
-
+// ==========================
+// WAVES / SPAWNING
+// ==========================
 function applyMilestones() {
   if (wave >= 10 && !save.milestones.wave10) {
     save.milestones.wave10 = true;
@@ -841,7 +807,7 @@ function applyMilestones() {
 
     unlockAchievement("wave10");
 
-    alert("MILESTONE: WAVE 10!\n\n+10 permanent coins!\nWeapon evolutions unlocked!");
+    alert("MILESTONE: WAVE 10!\n\n+10 coins!\nWeapon evolutions unlocked!");
     resetControls();
   }
 }
@@ -894,6 +860,11 @@ function spawnWave() {
     for (let i = 0; i < Math.floor(wave / 6); i++) spawnEnemy("tank");
   }
 
+  if (wave >= 5) {
+    const shooterCount = Math.max(1, Math.floor(wave / 7));
+    for (let i = 0; i < shooterCount; i++) spawnEnemy("shooter");
+  }
+
   floatingText(canvas.width / 2, 90, "WAVE " + wave, "#7dfcff", 28);
 }
 
@@ -914,9 +885,8 @@ function startChaosWave() {
   }
 
   const count = 4 + Math.floor(wave / 7);
-
   for (let i = 0; i < count; i++) {
-    spawnEnemy(i % 3 === 0 ? "fast" : "normal");
+    spawnEnemy(i % 3 === 0 ? "shooter" : i % 2 === 0 ? "fast" : "normal");
   }
 }
 
@@ -951,31 +921,14 @@ function updateBossWarning(dt) {
   screenShake *= 0.9;
 }
 
-
-// =====================================================
-// SPAWNING
-// =====================================================
-
 function randomEdgePosition() {
   const side = Math.floor(Math.random() * 4);
-  let x;
-  let y;
 
-  if (side === 0) {
-    x = Math.random() * canvas.width;
-    y = -70;
-  } else if (side === 1) {
-    x = canvas.width + 70;
-    y = Math.random() * canvas.height;
-  } else if (side === 2) {
-    x = Math.random() * canvas.width;
-    y = canvas.height + 70;
-  } else {
-    x = -70;
-    y = Math.random() * canvas.height;
-  }
+  if (side === 0) return { x: Math.random() * canvas.width, y: -70 };
+  if (side === 1) return { x: canvas.width + 70, y: Math.random() * canvas.height };
+  if (side === 2) return { x: Math.random() * canvas.width, y: canvas.height + 70 };
 
-  return { x, y };
+  return { x: -70, y: Math.random() * canvas.height };
 }
 
 function spawnEnemy(type) {
@@ -985,11 +938,11 @@ function spawnEnemy(type) {
     x: p.x,
     y: p.y,
     r: 18,
-    hp: 4 + wave * 0.75,
-    maxHp: 4 + wave * 0.75,
+    hp: (4 + wave * 0.75) * 1.25,
+    maxHp: (4 + wave * 0.75) * 1.25,
     speed: 75 + wave * 3.5,
     damage: 9,
-    type: type,
+    type,
     boss: false,
     color: "#ff5e3b",
     hit: 0,
@@ -999,7 +952,7 @@ function spawnEnemy(type) {
 
   if (type === "fast") {
     enemy.r = 13;
-    enemy.hp = 2.5 + wave * 0.45;
+    enemy.hp = (2.5 + wave * 0.45) * 1.25;
     enemy.maxHp = enemy.hp;
     enemy.speed = 140 + wave * 5;
     enemy.damage = 11;
@@ -1008,11 +961,23 @@ function spawnEnemy(type) {
 
   if (type === "tank") {
     enemy.r = 25;
-    enemy.hp = 8 + wave * 1.25;
+    enemy.hp = (8 + wave * 1.25) * 2;
     enemy.maxHp = enemy.hp;
     enemy.speed = 50 + wave * 1.6;
     enemy.damage = 16;
     enemy.color = "#ff7bba";
+  }
+
+  if (type === "shooter") {
+    enemy.r = 16;
+    enemy.hp = 3 + wave * 0.45;
+    enemy.maxHp = enemy.hp;
+    enemy.speed = 65 + wave * 2;
+    enemy.damage = 9;
+    enemy.color = "#7dfcff";
+    enemy.shootTimer = 1.5 + Math.random();
+    enemy.shootCooldown = 2.4;
+    enemy.bulletSpeed = 210 + wave * 2;
   }
 
   if (type === "mirror") {
@@ -1024,6 +989,7 @@ function spawnEnemy(type) {
     enemy.color = "#b28cff";
   }
 
+  applyEnemyTraits(enemy);
   enemies.push(enemy);
 }
 
@@ -1073,7 +1039,6 @@ function spawnBoss(type, chaos, small) {
   }
 
   if (type === "SPIRAL") {
-    hp *= 1.0;
     color = "#7dfcff";
   }
 
@@ -1090,19 +1055,17 @@ function spawnBoss(type, chaos, small) {
   }
 
   if (type === "MIRROR") {
-    hp *= 1.0;
     color = "#b28cff";
   }
 
   if (type === "HYBRID") {
     hp *= 1.3;
-    speed *= 1.0;
     damage += 4;
     color = "#ff3b93";
   }
 
   if (type === "RAVAGER_1") {
-    hp = 520;
+    hp = 520 * 1.5;
     speed = 35;
     damage = 18;
     r = 70;
@@ -1110,7 +1073,7 @@ function spawnBoss(type, chaos, small) {
   }
 
   if (type === "RAVAGER_2") {
-    hp = 900;
+    hp = 900 * 1.5;
     speed = 86;
     damage = 30;
     r = 76;
@@ -1118,7 +1081,7 @@ function spawnBoss(type, chaos, small) {
   }
 
   if (type === "FINAL") {
-    hp = 2800;
+    hp = 2800 * 1.25;
     speed = 0;
     damage = 42;
     r = 125;
@@ -1179,20 +1142,20 @@ function spawnBoss(type, chaos, small) {
     damage += 4;
   }
 
-  enemies.push({
+  const boss = {
     x: type === "FINAL" ? canvas.width / 2 : p.x,
     y: type === "FINAL" ? canvas.height * 0.22 : p.y,
-    r: r,
-    hp: hp,
+    r,
+    hp,
     maxHp: hp,
-    speed: speed,
-    damage: damage,
+    speed,
+    damage,
     boss: true,
     bossType: type,
-    chaos: chaos,
+    chaos,
     smallBoss: small,
     type: "boss",
-    color: color,
+    color,
     hit: 0,
     shootTimer: 1.2,
     specialTimer: 2.2,
@@ -1200,6 +1163,10 @@ function spawnBoss(type, chaos, small) {
     summonTimer: 3,
     orbTimer: 6.5,
     quadrantTimer: 3.2,
+    laneTimer: 2.6,
+    eyeTimer: 1.12,
+    swordTimer: 5.2,
+    slashTimer: 7.2,
     spin: 0,
     phase: 1,
     splitDone: false,
@@ -1207,14 +1174,15 @@ function spawnBoss(type, chaos, small) {
     dashVx: 0,
     dashVy: 0,
     downed: false
-  });
+  };
+
+  applyEnemyTraits(boss);
+  enemies.push(boss);
 }
 
-
-// =====================================================
+// ==========================
 // WEAPONS
-// =====================================================
-
+// ==========================
 function getCurrentWeapon() {
   return player.weapons[player.weaponIndex];
 }
@@ -1223,25 +1191,51 @@ function weaponEvolved() {
   return save.evolutionUnlocked;
 }
 
+function getBaseDamageForShot() {
+  const finalBossActive = enemies.some(e => e.bossType === "FINAL");
+
+  if (!finalBossActive) return player.damage;
+
+  const char = characterData[save.selectedCharacter] || characterData.CORE;
+  return char.damage;
+}
+
+function shouldCrit(weaponName) {
+  let chance = player.critChance || 0;
+
+  if (["MINIGUN", "FLAMER", "SPARK", "LASER"].includes(weaponName)) {
+    chance *= 0.4;
+  }
+
+  return Math.random() < chance;
+}
+
 function shoot(now) {
   const weaponName = getCurrentWeapon();
   const data = weaponData[weaponName];
 
-  let cooldown = data.cooldown - player.fireRateBonus;
-  cooldown = Math.max(0.035, cooldown);
+  let cooldown = Math.max(0.035, data.cooldown - player.fireRateBonus);
 
   if (now - player.lastShot < cooldown) return;
+
   player.lastShot = now;
 
   const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
   let damageBoost = player.overchargeTimer > 0 ? 1.7 : 1;
+
   if (player.rageTimer > 0) damageBoost *= 1.45;
 
   const evo = weaponEvolved();
+  const baseDmg = getBaseDamageForShot();
+  const crit = shouldCrit(weaponName) ? 1.75 : 1;
 
   if (weaponName === "PISTOL") {
-    createPlayerBullet(angle, player.damage * damageBoost, data.color, 5, 1.2, false);
-    if (evo) createPlayerBullet(angle + 0.08, player.damage * 0.8 * damageBoost, data.color, 4, 1.1, false);
+    createPlayerBullet(angle, baseDmg * damageBoost * crit, data.color, 5, 1.2, false, weaponName);
+
+    if (evo) {
+      createPlayerBullet(angle + 0.08, baseDmg * 0.8 * damageBoost, data.color, 4, 1.1, false, weaponName);
+    }
+
     playSound(data.sound, 0.04, "square", 0.035);
   }
 
@@ -1250,7 +1244,15 @@ function shoot(now) {
 
     for (let i = 0; i < pellets; i++) {
       const spread = (Math.random() - 0.5) * (evo ? 0.82 : 0.68);
-      createPlayerBullet(angle + spread, player.damage * 0.75 * damageBoost, data.color, 4, 0.68, false);
+      createPlayerBullet(
+        angle + spread,
+        baseDmg * 0.75 * damageBoost * (shouldCrit(weaponName) ? 1.75 : 1),
+        data.color,
+        4,
+        0.68,
+        false,
+        weaponName
+      );
     }
 
     burst(player.x, player.y, data.color, 15, 260);
@@ -1263,27 +1265,29 @@ function shoot(now) {
 
     for (let i = 0; i < shots; i++) {
       const spread = (i - Math.floor(shots / 2)) * 0.07;
-      createPlayerBullet(angle + spread, player.damage * 0.9 * damageBoost, data.color, 5, 1.1, false);
+      createPlayerBullet(angle + spread, baseDmg * 0.9 * damageBoost * crit, data.color, 5, 1.1, false, weaponName);
     }
 
     playSound(data.sound, 0.055, "square", 0.04);
   }
 
   if (weaponName === "LASER") {
-    createPlayerBullet(angle, player.damage * (evo ? 0.72 : 0.52) * damageBoost, data.color, 3.5, 1.65, true);
+    createPlayerBullet(angle, baseDmg * (evo ? 0.72 : 0.52) * damageBoost * crit, data.color, 3.5, 1.65, true, weaponName);
     bullets[bullets.length - 1].pierce = evo ? 8 : 2;
     playSound(data.sound, 0.025, "sine", 0.025);
   }
 
   if (weaponName === "MINIGUN") {
     const spread = (Math.random() - 0.5) * (evo ? 0.28 : 0.18);
-    createPlayerBullet(angle + spread, player.damage * (evo ? 0.5 : 0.42) * damageBoost, data.color, 4, 1.05, false);
+    createPlayerBullet(angle + spread, baseDmg * (evo ? 0.5 : 0.42) * damageBoost * crit, data.color, 4, 1.05, false, weaponName);
+
     if (evo) bullets[bullets.length - 1].burn = true;
+
     playSound(data.sound + Math.random() * 80, 0.025, "square", 0.022);
   }
 
   if (weaponName === "RPG") {
-    createPlayerBullet(angle, player.damage * (evo ? 5.5 : 4.5) * damageBoost, data.color, 9, 1.8, false);
+    createPlayerBullet(angle, baseDmg * (evo ? 6.6 : 5.5) * damageBoost * crit, data.color, 9, 1.8, false, weaponName);
     bullets[bullets.length - 1].explosive = true;
     bullets[bullets.length - 1].explosionRadius = evo ? 135 : 95;
     playSound(data.sound, 0.12, "sawtooth", 0.07);
@@ -1291,7 +1295,7 @@ function shoot(now) {
   }
 
   if (weaponName === "RAILGUN") {
-    createPlayerBullet(angle, player.damage * (evo ? 6.5 : 5.2) * damageBoost, data.color, 6, 1.6, true);
+    createPlayerBullet(angle, baseDmg * (evo ? 4.9 : 3.9) * damageBoost * crit, data.color, 6, 1.6, true, weaponName);
     bullets[bullets.length - 1].vx *= 1.35;
     bullets[bullets.length - 1].vy *= 1.35;
     bullets[bullets.length - 1].pierce = evo ? 12 : 8;
@@ -1301,13 +1305,13 @@ function shoot(now) {
 
   if (weaponName === "FLAMER") {
     const spread = (Math.random() - 0.5) * (evo ? 0.75 : 0.55);
-    createPlayerBullet(angle + spread, player.damage * (evo ? 0.35 : 0.28) * damageBoost, data.color, 6, evo ? 0.55 : 0.38, false);
+    createPlayerBullet(angle + spread, baseDmg * (evo ? 0.35 : 0.28) * damageBoost * crit, data.color, 6, evo ? 0.55 : 0.38, false, weaponName);
     bullets[bullets.length - 1].burn = true;
     playSound(data.sound + Math.random() * 40, 0.02, "sawtooth", 0.018);
   }
 
   if (weaponName === "SPARK") {
-    createPlayerBullet(angle, player.damage * (evo ? 0.95 : 0.75) * damageBoost, data.color, 4, 1.0, false);
+    createPlayerBullet(angle, baseDmg * (evo ? 0.95 : 0.75) * damageBoost * crit, data.color, 4, 1.0, false, weaponName);
     bullets[bullets.length - 1].chain = true;
     bullets[bullets.length - 1].chainCount = evo ? 5 : 2;
     playSound(data.sound, 0.035, "square", 0.028);
@@ -1315,24 +1319,25 @@ function shoot(now) {
 
   if (weaponName === "ORBIT") {
     const a1 = angle + Math.sin(now * 6) * 0.5;
-    createPlayerBullet(a1, player.damage * 0.85 * damageBoost, data.color, 5, 1.2, true);
+    createPlayerBullet(a1, baseDmg * 0.68 * damageBoost * crit, data.color, 5, 1.2, true, weaponName);
     bullets[bullets.length - 1].chain = evo;
     bullets[bullets.length - 1].chainCount = evo ? 3 : 0;
     playSound(data.sound, 0.04, "triangle", 0.028);
   }
 }
 
-function createPlayerBullet(angle, damage, color, size, life, pierce) {
+function createPlayerBullet(angle, damage, color, size, life, pierce, weaponName) {
   bullets.push({
     x: player.x + Math.cos(angle) * 28,
     y: player.y + Math.sin(angle) * 28,
     vx: Math.cos(angle) * player.bulletSpeed,
     vy: Math.sin(angle) * player.bulletSpeed,
     r: size,
-    damage: damage,
-    color: color,
-    life: life,
+    damage,
+    color,
+    life,
     enemyBullet: false,
+    weaponName: weaponName || "",
     pierce: pierce ? 2 : 0,
     explosive: false,
     explosionRadius: 0,
@@ -1345,12 +1350,12 @@ function createPlayerBullet(angle, damage, color, size, life, pierce) {
 
 function createEnemyBullet(x, y, angle, speed, size, damage, color) {
   bullets.push({
-    x: x,
-    y: y,
+    x,
+    y,
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
     r: size,
-    damage: damage,
+    damage,
     color: color || "#ff4f9f",
     life: 4,
     enemyBullet: true,
@@ -1359,11 +1364,9 @@ function createEnemyBullet(x, y, angle, speed, size, damage, color) {
   });
 }
 
-
-// =====================================================
+// ==========================
 // ABILITIES
-// =====================================================
-
+// ==========================
 function useCharacterAbility() {
   const now = performance.now() / 1000;
   const charId = save.selectedCharacter;
@@ -1376,7 +1379,7 @@ function useCharacterAbility() {
   player.lastAbility = now;
 
   if (charId === "CORE") {
-    player.hp = Math.min(player.maxHp, player.hp + 35);
+    player.hp = Math.min(player.maxHp, player.hp + 25 + player.maxHp * 0.05);
     floatingText(player.x, player.y - 45, "CORE HEAL", "#7dfcff", 18);
     playSound(700, 0.12, "triangle", 0.06);
   }
@@ -1447,11 +1450,9 @@ function useCharacterAbility() {
   }
 }
 
-
-// =====================================================
+// ==========================
 // UPDATE
-// =====================================================
-
+// ==========================
 function update(dt, now) {
   updateStars(dt);
 
@@ -1472,10 +1473,12 @@ function update(dt, now) {
   const len = Math.hypot(mx, my) || 1;
   let speed = player.speed;
 
+  if (player.orbRunner && orbs.length > 0) speed *= 1.25;
+
   if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
     player.lastDash = now;
-    player.invincible = 0.25;
-    speed *= 5.6;
+    player.invincible = 0.3;
+    speed *= 11.2;
     burst(player.x, player.y, "#6aa8ff", 30, 360);
     playSound(160, 0.08, "triangle", 0.06);
     screenShake = Math.max(screenShake, 5);
@@ -1498,7 +1501,7 @@ function update(dt, now) {
   handleCollisions();
   cleanObjects(dt);
 
-  if (player.damage >= 3) unlockAchievement("glassCannon");
+  if (godMode) player.hp = player.maxHp;
 
   if (player.hp <= 0) {
     state = "dead";
@@ -1511,9 +1514,7 @@ function update(dt, now) {
     }
   }
 
-  if (enemies.length === 0 && state === "playing") {
-    handleWaveClear();
-  }
+  if (enemies.length === 0 && state === "playing") handleWaveClear();
 
   screenShake *= 0.88;
 }
@@ -1535,16 +1536,11 @@ function handleWaveClear() {
     }
 
     saveGame();
+
     unlockAchievement("wave25");
     unlockAchievement("voidUnlocked");
-    unlockAchievement("ravagerDead");
 
-    alert(
-      "WAVE 25 CLEARED!\n\n" +
-      "+15 permanent coins!\n" +
-      "Secret character unlocked: VOID!\n\n" +
-      "The Ravager falls silent... for now."
-    );
+    alert("WAVE 25 CLEARED!\n\n+15 coins!\nSecret character unlocked: VOID!");
 
     resetControls();
     bossClearReward(false);
@@ -1579,6 +1575,7 @@ function updateStars(dt) {
 function updateBullets(dt) {
   for (const b of bullets) {
     b.trail.push({ x: b.x, y: b.y });
+
     if (b.trail.length > 5) b.trail.shift();
 
     b.x += b.vx * dt;
@@ -1592,11 +1589,37 @@ function updateEnemies(dt) {
 
   for (const e of enemies) {
     const angle = Math.atan2(player.y - e.y, player.x - e.x);
+
     e.spin += dt * 3 * enemyTimeMult;
     e.timer += dt * enemyTimeMult;
 
     if (e.boss) {
       updateBoss(e, dt, angle, enemyTimeMult);
+    } else if (e.type === "shooter") {
+      const d = distance(e, player);
+
+      if (d < 260) {
+        e.x -= Math.cos(angle) * e.speed * 0.55 * dt * enemyTimeMult;
+        e.y -= Math.sin(angle) * e.speed * 0.55 * dt * enemyTimeMult;
+      } else if (d > 420) {
+        e.x += Math.cos(angle) * e.speed * 0.65 * dt * enemyTimeMult;
+        e.y += Math.sin(angle) * e.speed * 0.65 * dt * enemyTimeMult;
+      }
+
+      e.shootTimer -= dt * enemyTimeMult;
+
+      if (e.shootTimer <= 0) {
+        e.shootTimer = e.shootCooldown || 2.4;
+        createEnemyBullet(
+          e.x,
+          e.y,
+          angle,
+          e.bulletSpeed || 220,
+          6,
+          e.damage,
+          e.corrupted ? "#c026ff" : e.voided ? "#6b3cff" : "#7dfcff"
+        );
+      }
     } else {
       e.x += Math.cos(angle) * e.speed * dt * enemyTimeMult;
       e.y += Math.sin(angle) * e.speed * dt * enemyTimeMult;
@@ -1604,55 +1627,32 @@ function updateEnemies(dt) {
 
     e.hit -= dt;
 
-    if (
-      distance(e, player) < e.r + player.r &&
-      player.invincible <= 0 &&
-      player.ghostTimer <= 0
-    ) {
+    if (distance(e, player) < e.r + player.r && player.invincible <= 0 && player.ghostTimer <= 0) {
       let realDamage = Math.max(2, e.damage - player.armor);
 
       if (player.shieldTimer > 0 || player.rageTimer > 0) realDamage *= 0.35;
 
-      player.hp -= realDamage * dt;
+      if (!godMode) player.hp -= realDamage * dt;
     }
   }
 }
 
-
-// =====================================================
+// ==========================
 // BOSS AI
-// =====================================================
-
+// ==========================
 function updateBoss(e, dt, angle, mult) {
   e.phase = e.hp < e.maxHp * 0.5 ? 2 : 1;
 
-  if (e.bossType === "FINAL") {
-    updateFinalBoss(e, dt, angle, mult);
-    return;
-  }
+  if (e.corrupted) mult *= 1.25 + getCorruptionLevel() * 0.05;
+  if (e.voided) mult *= 1.1;
 
-  if (e.bossType === "RAVAGER_1") {
-    updateRavagerDormant(e, dt, angle, mult);
-    return;
-  }
-
-  if (e.bossType === "RAVAGER_2") {
-    updateRavagerAwakened(e, dt, angle, mult);
-    return;
-  }
-
-  if (
-    e.bossType === "RAVAGER_ECHO" ||
-    e.bossType === "RAVAGER_BURNING" ||
-    e.bossType === "RAVAGER_VOID" ||
-    e.bossType === "RAVAGER_IRON" ||
-    e.bossType === "RAVAGER_CROWNED"
-  ) {
-    updateRavagerEcho(e, dt, angle, mult);
-    return;
-  }
+  if (e.bossType === "FINAL") return updateFinalBoss(e, dt, angle, mult);
+  if (e.bossType === "RAVAGER_1") return updateRavagerDormant(e, dt, angle, mult);
+  if (e.bossType === "RAVAGER_2") return updateRavagerAwakened(e, dt, angle, mult);
+  if (isRavagerEcho(e.bossType)) return updateRavagerEcho(e, dt, angle, mult);
 
   let bossSpeed = e.speed * 1.04;
+
   if (e.phase === 2) bossSpeed *= 1.12;
 
   if (e.bossType === "CHARGER") {
@@ -1667,10 +1667,8 @@ function updateBoss(e, dt, angle, mult) {
       }
     }
 
-    const chargerSpeed = wave < 20 ? 1.05 : 1.25;
-
-    e.x += Math.cos(angle) * bossSpeed * chargerSpeed * dt * mult;
-    e.y += Math.sin(angle) * bossSpeed * chargerSpeed * dt * mult;
+    e.x += Math.cos(angle) * bossSpeed * (wave < 20 ? 1.05 : 1.25) * dt * mult;
+    e.y += Math.sin(angle) * bossSpeed * (wave < 20 ? 1.05 : 1.25) * dt * mult;
   } else if (e.bossType === "DASHLINE") {
     updateDashlineBoss(e, dt, angle, mult);
   } else if (e.bossType === "SNIPER") {
@@ -1701,18 +1699,7 @@ function updateBoss(e, dt, angle, mult) {
   } else if (e.bossType === "SNIPER") {
     if (e.shootTimer <= 0) {
       e.shootTimer = e.phase === 2 ? 0.9 : 1.4;
-      hazards.push({
-        type: "line",
-        x: e.x,
-        y: e.y,
-        angle: angle,
-        timer: 0,
-        warning: 0.75,
-        duration: 0.18,
-        damage: 28,
-        color: "#ffffff",
-        width: 20
-      });
+      createLineHazard(e.x, e.y, angle, "#ffffff", 0.75, 0.18, 28, 20);
       playSound(600, 0.08, "triangle", 0.05);
     }
   } else {
@@ -1763,6 +1750,16 @@ function updateBoss(e, dt, angle, mult) {
   }
 }
 
+function isRavagerEcho(type) {
+  return (
+    type === "RAVAGER_ECHO" ||
+    type === "RAVAGER_BURNING" ||
+    type === "RAVAGER_VOID" ||
+    type === "RAVAGER_IRON" ||
+    type === "RAVAGER_CROWNED"
+  );
+}
+
 function updateDashlineBoss(e, dt, angle, mult) {
   if (e.dashPause <= 0) {
     e.dashPause = 1.0;
@@ -1790,6 +1787,7 @@ function updateRavagerDormant(e, dt, angle, mult) {
 
   if (e.shootTimer <= 0) {
     e.shootTimer = 1.45;
+
     for (let i = 0; i < 6; i++) {
       const a = e.spin + (i * Math.PI * 2) / 6;
       createEnemyBullet(e.x, e.y, a, 220, 8, 15, "#5b6478");
@@ -1806,9 +1804,9 @@ function updateRavagerDormant(e, dt, angle, mult) {
     e.summonTimer = 3.4;
     spawnEnemy("fast");
     spawnEnemy("normal");
+    spawnEnemy("shooter");
   }
 }
-
 function updateRavagerAwakened(e, dt, angle, mult) {
   e.spin += dt * 2.2;
   e.shootTimer -= dt * mult;
@@ -1840,6 +1838,7 @@ function updateRavagerAwakened(e, dt, angle, mult) {
     spawnEnemy("fast");
     spawnEnemy("fast");
     spawnEnemy("normal");
+    spawnEnemy("shooter");
   }
 }
 
@@ -1865,11 +1864,10 @@ function updateRavagerEcho(e, dt, angle, mult) {
 
   if (e.specialTimer <= 0) {
     e.specialTimer = e.phase === 2 ? 2.0 : 2.6;
-
-    createQuadrantBeam(randomQuadrant(), e.color, 0.58, 28);
+    const q1 = randomQuadrant();
+    createQuadrantBeam(q1, e.color, 0.58, 28);
 
     if (e.bossType === "RAVAGER_CROWNED" || e.phase === 2) {
-      const q1 = randomQuadrant();
       let q2 = randomQuadrant();
       while (q2 === q1) q2 = randomQuadrant();
       createQuadrantBeam(q2, e.color, 0.7, 24);
@@ -1880,10 +1878,14 @@ function updateRavagerEcho(e, dt, angle, mult) {
     e.summonTimer = 3.0;
     spawnEnemy(e.bossType === "RAVAGER_IRON" ? "tank" : "fast");
     spawnEnemy("normal");
+    spawnEnemy("shooter");
   }
 }
 
 function updateFinalBoss(e, dt, angle, mult) {
+  if (e.corrupted) mult *= 1.35 + getCorruptionLevel() * 0.08;
+  if (e.voided) mult *= 1.15;
+
   e.x = canvas.width / 2 + Math.sin(performance.now() / 650) * 145;
   e.y = canvas.height * 0.2 + Math.cos(performance.now() / 800) * 45;
 
@@ -1894,7 +1896,10 @@ function updateFinalBoss(e, dt, angle, mult) {
   e.specialTimer -= dt * mult;
   e.summonTimer -= dt * mult;
   e.orbTimer -= dt * mult;
-  e.quadrantTimer -= dt * mult;
+  e.laneTimer -= dt * mult;
+  e.eyeTimer -= dt * mult;
+  e.swordTimer -= dt * mult;
+  e.slashTimer -= dt * mult;
 
   if (finalDownTimer > 0) {
     finalDownTimer -= dt;
@@ -1917,20 +1922,24 @@ function updateFinalBoss(e, dt, angle, mult) {
     e.spin += 0.45;
   }
 
-  if (e.quadrantTimer <= 0) {
-    e.quadrantTimer = e.phase === 3 ? 1.35 : e.phase === 2 ? 1.75 : 2.2;
+  if (e.laneTimer <= 0) {
+    e.laneTimer = e.phase === 3 ? 1.15 : e.phase === 2 ? 1.45 : 1.75;
+    createLaneStrike(e.phase === 3 ? 0.42 : e.phase === 2 ? 0.52 : 0.62, 50);
+  }
 
-    const q1 = randomQuadrant();
-    createQuadrantBeam(q1, "#ff2f88", e.phase === 3 ? 0.45 : 0.6, 42);
+  if (e.eyeTimer <= 0) {
+    e.eyeTimer = e.phase === 3 ? 0.82 : e.phase === 2 ? 0.95 : 1.12;
+    createLineHazard(e.x, e.y, angle, "#ffffff", e.phase === 3 ? 0.42 : 0.52, 0.16, 40, 34);
+  }
 
-    if (e.phase >= 2) {
-      let q2 = randomQuadrant();
-      while (q2 === q1) q2 = randomQuadrant();
-      createQuadrantBeam(q2, "#ffde59", e.phase === 3 ? 0.55 : 0.7, 34);
-    }
+  if (e.swordTimer <= 0) {
+    e.swordTimer = e.phase === 3 ? 2.9 : 4.2;
+    createSwordRain(e.phase === 3 ? 11 : 7, e.phase === 3 ? 0.45 : 0.65, 34);
+  }
 
-    floatingText(canvas.width / 2, 115, "FALLING BEAMS", "#ff2f88", 24);
-    screenShake = Math.max(screenShake, 10);
+  if (e.slashTimer <= 0) {
+    e.slashTimer = e.phase === 3 ? 5.2 : 7.0;
+    createDiagonalSlash(Math.random() < 0.5 ? "slashA" : "slashB", "#ff2f88", 0.72, 38);
   }
 
   if (e.specialTimer <= 0) {
@@ -1941,10 +1950,16 @@ function updateFinalBoss(e, dt, angle, mult) {
   if (e.summonTimer <= 0) {
     e.summonTimer = e.phase === 3 ? 4.2 : 5.8;
     spawnBoss("PAST_BOSS", true, true);
-    spawnEnemy("fast");
+    spawnEnemy("shooter");
     spawnEnemy("tank");
+
     if (e.phase >= 2) spawnBoss("PAST_BOSS", true, true);
-    if (e.phase >= 3) spawnEnemy("fast");
+
+    if (e.phase >= 3) {
+      spawnEnemy("fast");
+      spawnEnemy("shooter");
+    }
+
     floatingText(e.x, e.y + 105, "PAST BOSSES RETURN", "#b28cff", 18);
   }
 
@@ -1954,11 +1969,9 @@ function updateFinalBoss(e, dt, angle, mult) {
   }
 }
 
-
-// =====================================================
+// ==========================
 // HAZARDS / ORBS
-// =====================================================
-
+// ==========================
 function randomQuadrant() {
   const qs = ["topLeft", "topRight", "bottomLeft", "bottomRight"];
   return qs[Math.floor(Math.random() * qs.length)];
@@ -1967,69 +1980,94 @@ function randomQuadrant() {
 function createQuadrantBeam(quadrant, color, warning, damage) {
   hazards.push({
     type: "quadrantBeam",
-    quadrant: quadrant,
+    quadrant,
     timer: 0,
-    warning: warning,
+    warning,
     duration: 0.45,
-    damage: damage,
-    color: color,
-    beamFall: 0
+    damage,
+    color
+  });
+}
+
+function createLaneStrike(warning, damage) {
+  let lanes = [0, 1, 2, 3, 4, 5, 6, 7];
+
+  for (let i = lanes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = lanes[i];
+    lanes[i] = lanes[j];
+    lanes[j] = temp;
+  }
+
+  hazards.push({
+    type: "laneStrike",
+    lanes: lanes.slice(0, 4),
+    timer: 0,
+    warning,
+    duration: 0.32,
+    damage,
+    color: "#ff1f4f"
   });
 }
 
 function createRingHazard(x, y, startR, maxR, damage, color) {
   hazards.push({
     type: "ring",
-    x: x,
-    y: y,
+    x,
+    y,
     r: startR,
-    maxR: maxR,
+    maxR,
     timer: 0,
     warning: 0.2,
     duration: 1.6,
-    damage: damage,
-    color: color
+    damage,
+    color
   });
 }
 
-function updateHazards(dt) {
-  for (const h of hazards) {
-    h.timer += dt;
+function createLineHazard(x, y, angle, color, warning, duration, damage, width) {
+  hazards.push({
+    type: "line",
+    x,
+    y,
+    angle,
+    timer: 0,
+    warning,
+    duration,
+    damage,
+    color,
+    width
+  });
+}
 
-    if (h.type === "ring") {
-      h.r += (h.maxR / h.duration) * dt;
+function createSwordRain(count, warning, damage) {
+  for (let i = 0; i < count; i++) {
+    const x = 70 + Math.random() * (canvas.width - 140);
 
-      const d = Math.abs(distance(player, h) - h.r);
-      if (d < 12 && h.timer > h.warning && player.invincible <= 0 && player.ghostTimer <= 0) {
-        hurtPlayer(h.damage);
-        player.invincible = 0.25;
-      }
-    }
-
-    if (h.type === "quadrantBeam") {
-      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
-      if (active && pointInQuadrant(player.x, player.y, h.quadrant) && player.invincible <= 0 && player.ghostTimer <= 0) {
-        hurtPlayer(h.damage);
-        player.invincible = 0.35;
-      }
-    }
-
-    if (h.type === "line" && h.timer > h.warning && h.timer < h.warning + h.duration) {
-      const px = player.x - h.x;
-      const py = player.y - h.y;
-      const perpendicular = Math.abs(Math.sin(h.angle) * px - Math.cos(h.angle) * py);
-
-      if (perpendicular < h.width && player.invincible <= 0 && player.ghostTimer <= 0) {
-        hurtPlayer(h.damage);
-        player.invincible = 0.28;
-      }
-    }
+    hazards.push({
+      type: "sword",
+      x,
+      y: -80,
+      timer: 0,
+      warning,
+      duration: 0.5,
+      damage,
+      color: i % 2 ? "#ffffff" : "#ff2f88",
+      width: 22 + Math.random() * 16
+    });
   }
+}
 
-  hazards = hazards.filter(function (h) {
-    if (h.type === "ring") return h.timer < h.duration;
-    if (h.type === "quadrantBeam") return h.timer < h.warning + h.duration;
-    return h.timer < h.warning + h.duration;
+function createDiagonalSlash(kind, color, warning, damage) {
+  hazards.push({
+    type: "diagonal",
+    kind,
+    timer: 0,
+    warning,
+    duration: 0.25,
+    damage,
+    color,
+    width: 38
   });
 }
 
@@ -2045,10 +2083,92 @@ function getQuadrantRect(q) {
   const w = canvas.width / 2;
   const h = canvas.height / 2;
 
-  if (q === "topLeft") return { x: 0, y: 0, w: w, h: h };
-  if (q === "topRight") return { x: w, y: 0, w: w, h: h };
-  if (q === "bottomLeft") return { x: 0, y: h, w: w, h: h };
-  return { x: w, y: h, w: w, h: h };
+  if (q === "topLeft") return { x: 0, y: 0, w, h };
+  if (q === "topRight") return { x: w, y: 0, w, h };
+  if (q === "bottomLeft") return { x: 0, y: h, w, h };
+
+  return { x: w, y: h, w, h };
+}
+
+function updateHazards(dt) {
+  for (const h of hazards) {
+    h.timer += dt;
+
+    if (h.type === "ring") {
+      h.r += (h.maxR / h.duration) * dt;
+      const d = Math.abs(distance(player, h) - h.r);
+
+      if (d < 12 && h.timer > h.warning && canHitPlayer()) {
+        hurtPlayer(h.damage, "ring");
+      }
+    }
+
+    if (h.type === "quadrantBeam") {
+      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
+
+      if (active && pointInQuadrant(player.x, player.y, h.quadrant) && canHitPlayer()) {
+        hurtPlayer(h.damage, "beam");
+      }
+    }
+
+    if (h.type === "laneStrike") {
+      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
+      const laneHeight = canvas.height / 8;
+      const playerLane = Math.floor(player.y / laneHeight);
+
+      if (active && h.lanes.includes(playerLane) && canHitPlayer()) {
+        hurtPlayer(h.damage, "lane");
+      }
+    }
+
+    if (h.type === "line") {
+      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
+
+      if (active) {
+        const px = player.x - h.x;
+        const py = player.y - h.y;
+        const perpendicular = Math.abs(Math.sin(h.angle) * px - Math.cos(h.angle) * py);
+
+        if (perpendicular < h.width && canHitPlayer()) {
+          hurtPlayer(h.damage, "line");
+        }
+      }
+    }
+
+    if (h.type === "sword") {
+      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
+
+      if (active) {
+        const sx = h.x;
+        const sy = ((h.timer - h.warning) / h.duration) * (canvas.height + 160) - 80;
+
+        if (Math.abs(player.x - sx) < h.width && Math.abs(player.y - sy) < 80 && canHitPlayer()) {
+          hurtPlayer(h.damage, "sword");
+        }
+      }
+    }
+
+    if (h.type === "diagonal") {
+      const active = h.timer > h.warning && h.timer < h.warning + h.duration;
+
+      if (active) {
+        const diagonalValue = h.kind === "slashA" ? player.y - player.x : player.y - (canvas.height - player.x);
+
+        if (Math.abs(diagonalValue) < 50 && canHitPlayer()) {
+          hurtPlayer(h.damage, "slash");
+        }
+      }
+    }
+  }
+
+  hazards = hazards.filter(h => {
+    if (h.type === "ring") return h.timer < h.duration;
+    return h.timer < h.warning + h.duration;
+  });
+}
+
+function canHitPlayer() {
+  return player.invincible <= 0 && player.ghostTimer <= 0 && !godMode;
 }
 
 function spawnFinalOrb() {
@@ -2070,57 +2190,47 @@ function updateOrbs(dt) {
 
     if (distance(o, player) < o.r + player.r) {
       o.timer = -1;
-      hitFinalBossWithOrb(o);
+      hitFinalBossWithOrb();
     }
   }
 
-  orbs = orbs.filter(function (o) {
-    return o.timer > 0;
-  });
+  orbs = orbs.filter(o => o.timer > 0);
 }
 
-function hitFinalBossWithOrb(o) {
-  const boss = getFinalBoss();
+function hitFinalBossWithOrb() {
+  const boss = enemies.find(e => e.bossType === "FINAL");
+
   if (!boss) return;
 
   boss.hit = 0.4;
   finalDownTimer = 4.2;
-
   burst(boss.x, boss.y, "#7dfcff", 100, 520);
   floatingText(canvas.width / 2, canvas.height / 2, "BOSS DOWNED - ATTACK NOW", "#7dfcff", 32);
   screenShake = 20;
   playSound(80, 0.45, "sawtooth", 0.09);
 }
 
-function getFinalBoss() {
-  for (const e of enemies) {
-    if (e.boss && e.bossType === "FINAL") return e;
-  }
-  return null;
-}
-
-function hurtPlayer(amount) {
+function hurtPlayer(amount, source) {
   let realDamage = Math.max(2, amount - player.armor);
+
+  if (source === "beam" && player.beamResist) realDamage *= 0.9;
   if (player.shieldTimer > 0 || player.rageTimer > 0) realDamage *= 0.35;
-  player.hp -= realDamage;
+
+  if (!godMode) player.hp -= realDamage;
+
   burst(player.x, player.y, "#ff4f9f", 14, 180);
   playSound(80, 0.08, "sawtooth", 0.07);
+  player.invincible = 0.25;
 }
 
-
-// =====================================================
-// COLLISIONS / CLEANUP / REWARDS
-// =====================================================
-
+// ==========================
+// COLLISIONS / REWARDS
+// ==========================
 function handleCollisions() {
   for (const b of bullets) {
     if (b.enemyBullet) {
-      if (
-        distance(b, player) < b.r + player.r &&
-        player.invincible <= 0 &&
-        player.ghostTimer <= 0
-      ) {
-        hurtPlayer(b.damage);
+      if (distance(b, player) < b.r + player.r && canHitPlayer()) {
+        hurtPlayer(b.damage, "bullet");
         b.life = -1;
         player.invincible = 0.18;
         screenShake = Math.max(screenShake, 7);
@@ -2138,7 +2248,17 @@ function handleCollisions() {
           break;
         }
       } else if (distance(b, e) < b.r + e.r) {
-        e.hp -= b.damage;
+        let damage = b.damage;
+
+        if (e.boss) {
+          if (b.weaponName === "RAILGUN") damage *= 1 / 3;
+          if (b.weaponName === "LASER") damage *= 1 / 5;
+          if (b.weaponName === "SPARK") damage *= 1 / 5;
+        }
+
+        if (player.shieldBreaker && e.boss) damage *= 1.2;
+
+        e.hp -= damage;
         e.hit = 0.08;
 
         if (b.explosive) {
@@ -2147,7 +2267,7 @@ function handleCollisions() {
 
           for (const other of enemies) {
             if (other !== e && distance(b, other) < b.explosionRadius + other.r) {
-              other.hp -= b.damage * 0.65;
+              other.hp -= damage * 0.65;
               other.hit = 0.1;
             }
           }
@@ -2161,7 +2281,9 @@ function handleCollisions() {
 
           for (const other of enemies) {
             if (other !== e && chained < maxChain && distance(e, other) < 140 + other.r) {
-              other.hp -= b.damage * 0.55;
+              let chainDamage = damage * 0.55;
+              if (other.boss) chainDamage *= 0.2;
+              other.hp -= chainDamage;
               other.hit = 0.1;
               burst(other.x, other.y, "#7dfcff", 8, 150);
               chained++;
@@ -2180,28 +2302,25 @@ function handleCollisions() {
     }
   }
 
-  enemies = enemies.filter(function (e) {
+  enemies = enemies.filter(e => {
     if (e.hp <= 0) {
-      burst(
-        e.x,
-        e.y,
-        e.boss ? "#ff2f88" : e.color,
-        e.boss ? 80 : 24,
-        e.boss ? 460 : 240
-      );
-
-      playSound(
-        e.boss ? 55 : 110,
-        e.boss ? 0.35 : 0.11,
-        "sawtooth",
-        e.boss ? 0.09 : 0.035
-      );
-
+      burst(e.x, e.y, e.boss ? "#ff2f88" : e.color, e.boss ? 80 : 24, e.boss ? 460 : 240);
+      playSound(e.boss ? 55 : 110, e.boss ? 0.35 : 0.11, "sawtooth", e.boss ? 0.09 : 0.035);
       screenShake = Math.max(screenShake, e.boss ? 14 : 4);
 
       if (!e.boss) {
-        enemiesKilledThisRun++;
         unlockAchievement("firstBlood");
+
+        if (player.vampireCore) {
+          player.killsSinceHeal++;
+
+          if (player.killsSinceHeal >= 3) {
+            player.killsSinceHeal = 0;
+            player.hp = Math.min(player.maxHp, player.hp + 1);
+          }
+        }
+      } else if (player.vampireCore) {
+        player.hp = Math.min(player.maxHp, player.hp + 10);
       }
 
       return false;
@@ -2212,14 +2331,8 @@ function handleCollisions() {
 }
 
 function cleanObjects(dt) {
-  bullets = bullets.filter(function (b) {
-    return (
-      b.life > 0 &&
-      b.x > -160 &&
-      b.x < canvas.width + 160 &&
-      b.y > -160 &&
-      b.y < canvas.height + 160
-    );
+  bullets = bullets.filter(b => {
+    return b.life > 0 && b.x > -160 && b.x < canvas.width + 160 && b.y > -160 && b.y < canvas.height + 160;
   });
 
   for (const p of particles) {
@@ -2230,49 +2343,43 @@ function cleanObjects(dt) {
     p.life -= dt;
   }
 
-  particles = particles.filter(function (p) {
-    return p.life > 0;
-  });
+  particles = particles.filter(p => p.life > 0);
 
   for (const f of floatingTexts) {
     f.y -= 42 * dt;
     f.life -= dt;
   }
 
-  floatingTexts = floatingTexts.filter(function (f) {
-    return f.life > 0;
-  });
+  floatingTexts = floatingTexts.filter(f => f.life > 0);
 }
 
 function chooseWaveBuff() {
   const buffs = [
-    { name: "+Damage", color: "#ff5eec", apply: function () { player.damage += 0.16; } },
-    { name: "+Speed", color: "#9f7dff", apply: function () { player.speed += 12; } },
-    {
-      name: "+Max HP",
-      color: "#6cff7a",
-      apply: function () {
-        player.maxHp += 8;
-        player.hp = Math.min(player.maxHp, player.hp + 12);
-      }
-    },
-    { name: "+Fire Rate", color: "#7dfcff", apply: function () { player.fireRateBonus += 0.006; } },
-    { name: "+Bullet Speed", color: "#ffd36a", apply: function () { player.bulletSpeed += 22; } },
-    { name: "+Armor", color: "#ffffff", apply: function () { player.armor += 0.35; } }
+    { name: "+Damage", color: "#ff5eec", apply: () => { player.damage += 0.14; } },
+    { name: "+Speed", color: "#9f7dff", apply: () => { player.speed += 12; } },
+    { name: "+Max HP", color: "#6cff7a", apply: () => { player.maxHp += 8; player.hp = Math.min(player.maxHp, player.hp + 12); } },
+    { name: "+Fire Rate", color: "#7dfcff", apply: () => { player.fireRateBonus += 0.006; } },
+    { name: "+Bullet Speed", color: "#ffd36a", apply: () => { player.bulletSpeed += 22; } },
+    { name: "+Armor", color: "#ffffff", apply: () => { player.armor += 0.35; } },
+    { name: "Crit Core", color: "#ffde59", apply: () => { player.critChance = Math.min(0.10, player.critChance + 0.02); } },
+    { name: "Vampire Core", color: "#ff4f9f", apply: () => { player.vampireCore = true; } },
+    { name: "Shield Breaker", color: "#ff9f43", apply: () => { player.shieldBreaker = true; } },
+    { name: "Orb Runner", color: "#7dfcff", apply: () => { player.orbRunner = true; } },
+    { name: "Beam Guard", color: "#b28cff", apply: () => { player.beamResist = true; } }
   ];
 
   let choices = [];
 
   while (choices.length < 3) {
     const b = buffs[Math.floor(Math.random() * buffs.length)];
-    if (choices.indexOf(b) === -1) choices.push(b);
+    if (!choices.includes(b)) choices.push(b);
   }
 
   let msg = "WAVE CLEAR!\n\nChoose 1 free run buff:\n\n";
 
-  for (let i = 0; i < choices.length; i++) {
-    msg += i + 1 + ". " + choices[i].name + "\n";
-  }
+  choices.forEach((b, i) => {
+    msg += (i + 1) + ". " + b.name + "\n";
+  });
 
   msg += "\nType 1, 2, or 3.";
 
@@ -2280,6 +2387,7 @@ function chooseWaveBuff() {
   resetControls();
 
   let index = Number(pick) - 1;
+
   if (index < 0 || index >= choices.length || Number.isNaN(index)) index = 0;
 
   const buff = choices[index];
@@ -2294,18 +2402,11 @@ function bossClearReward(showChoice) {
   save.coins += wave === 50 ? 50 : 10;
   saveGame();
 
-  bossesKilledThisRun++;
   unlockAchievement("firstBoss");
 
   if (save.coins >= 50) unlockAchievement("rich");
 
-  floatingText(
-    canvas.width / 2,
-    canvas.height / 2 + 60,
-    "FULL HEAL + COINS",
-    "#6cff7a",
-    22
-  );
+  floatingText(canvas.width / 2, canvas.height / 2 + 60, "FULL HEAL + COINS", "#6cff7a", 22);
 
   if (showChoice) giveFreeBossUpgrade();
 
@@ -2317,42 +2418,34 @@ function bossClearReward(showChoice) {
 function giveFreeBossUpgrade() {
   state = "reward";
 
-  const locked = Object.keys(weaponData).filter(function (w) {
-    return player.weapons.indexOf(w) === -1;
-  });
-
+  const locked = Object.keys(weaponData).filter(w => player.weapons.indexOf(w) === -1);
   const choices = [];
 
   if (locked.length > 0) {
     while (choices.length < Math.min(2, locked.length)) {
       const w = locked[Math.floor(Math.random() * locked.length)];
-      if (choices.indexOf(w) === -1) choices.push(w);
+
+      if (!choices.includes(w)) choices.push(w);
     }
   }
 
-  choices.push("RUN DAMAGE");
-  choices.push("RUN FIRE RATE");
-  choices.push("RUN HEALTH");
-  choices.push("RUN SPEED");
+  choices.push("RUN DAMAGE", "RUN FIRE RATE", "RUN HEALTH", "RUN SPEED", "CRIT CORE", "VAMPIRE CORE", "SHIELD BREAKER", "ORB RUNNER");
 
   const shown = choices.slice(0, 3);
 
-  let msg =
-    "BOSS DEFEATED!\n\n" +
-    "Permanent coins earned!\n" +
-    "Full HP restored!\n\n" +
-    "Choose ONE FREE run upgrade:\n\n";
+  let msg = "BOSS DEFEATED!\n\nPermanent coins earned!\nFull HP restored!\n\nChoose ONE FREE run upgrade:\n\n";
 
-  for (let i = 0; i < shown.length; i++) {
-    msg += i + 1 + ". " + shown[i] + "\n";
-  }
+  shown.forEach((r, i) => {
+    msg += (i + 1) + ". " + r + "\n";
+  });
 
-  msg += "\nThis upgrade is only for this run.\nType 1, 2, or 3.";
+  msg += "\nType 1, 2, or 3.";
 
   let pick = prompt(msg);
   resetControls();
 
   let index = Number(pick) - 1;
+
   if (index < 0 || index >= shown.length || Number.isNaN(index)) index = 0;
 
   const reward = shown[index];
@@ -2360,127 +2453,40 @@ function giveFreeBossUpgrade() {
   if (weaponData[reward]) {
     player.weapons.push(reward);
     player.weaponIndex = player.weapons.length - 1;
-
-    floatingText(
-      canvas.width / 2,
-      canvas.height / 2,
-      "NEW RUN WEAPON: " + reward,
-      weaponData[reward].color,
-      30
-    );
-
-    if (reward === "RPG") unlockAchievement("rpgFound");
-
-    let ownedAll = true;
-    for (const w in weaponData) {
-      if (player.weapons.indexOf(w) === -1) ownedAll = false;
-    }
-
-    if (ownedAll) unlockAchievement("allWeapons");
+    floatingText(canvas.width / 2, canvas.height / 2, "NEW RUN WEAPON: " + reward, weaponData[reward].color, 30);
   } else if (reward === "RUN DAMAGE") {
-    player.damage += 0.8;
-    floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: DAMAGE", "#ff5eec", 28);
+    player.damage += 0.65;
   } else if (reward === "RUN FIRE RATE") {
-    player.fireRateBonus += 0.02;
-    floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: FIRE RATE", "#7dfcff", 28);
+    player.fireRateBonus += 0.018;
   } else if (reward === "RUN HEALTH") {
-    player.maxHp += 35;
+    player.maxHp += 32;
     player.hp = player.maxHp;
-    floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: HEALTH", "#6cff7a", 28);
   } else if (reward === "RUN SPEED") {
-    player.speed += 45;
-    floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: SPEED", "#9f7dff", 28);
+    player.speed += 42;
+  } else if (reward === "CRIT CORE") {
+    player.critChance = Math.min(0.10, player.critChance + 0.03);
+  } else if (reward === "VAMPIRE CORE") {
+    player.vampireCore = true;
+  } else if (reward === "SHIELD BREAKER") {
+    player.shieldBreaker = true;
+  } else if (reward === "ORB RUNNER") {
+    player.orbRunner = true;
   }
 
+  floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: " + reward, "#ffde59", 28);
   playSound(740, 0.16, "triangle", 0.07);
 }
 
-
-// =====================================================
-// DRAW HELPERS
-// =====================================================
-
-function burst(x, y, color, amount, power) {
-  for (let i = 0; i < amount; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const s = Math.random() * power + 40;
-
-    particles.push({
-      x: x,
-      y: y,
-      vx: Math.cos(a) * s,
-      vy: Math.sin(a) * s,
-      r: Math.random() * 4 + 2,
-      color: color,
-      life: 0.5 + Math.random() * 0.45
-    });
-  }
-}
-
-function burstVisual(x, y, color, amount) {
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = color;
-  for (let i = 0; i < amount; i++) {
-    const a = (i / amount) * Math.PI * 2;
-    const r = 70 + Math.sin(performance.now() / 120 + i) * 20;
-    ctx.beginPath();
-    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 10, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-}
-
-function floatingText(x, y, text, color, size) {
-  floatingTexts.push({
-    x: x,
-    y: y,
-    text: text,
-    color: color,
-    size: size,
-    life: 1.35
-  });
-}
-
-function getBoss() {
-  for (const e of enemies) {
-    if (e.boss) return e;
-  }
-  return null;
-}
-
-function distance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-
-// =====================================================
-// DRAW
-// =====================================================
-
+// ==========================
+// DRAWING
+// ==========================
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
 
   if (screenShake > 0.2) {
-    ctx.translate(
-      (Math.random() - 0.5) * screenShake,
-      (Math.random() - 0.5) * screenShake
-    );
+    ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
   }
 
   drawBackground();
@@ -2513,7 +2519,7 @@ function drawBackground() {
     canvas.width
   );
 
-  bg.addColorStop(0, wave >= 50 || save.chaosUnlocked ? "#28051f" : "#121a38");
+  bg.addColorStop(0, save.corruptedMode ? "#2b0035" : (wave >= 50 || save.chaosUnlocked ? "#28051f" : "#121a38"));
   bg.addColorStop(0.55, "#080d22");
   bg.addColorStop(1, "#03050d");
 
@@ -2529,7 +2535,7 @@ function drawBackground() {
   }
 
   ctx.globalAlpha = 1;
-  ctx.strokeStyle = "rgba(130,160,255,0.07)";
+  ctx.strokeStyle = save.corruptedMode ? "rgba(255,60,255,0.08)" : "rgba(130,160,255,0.07)";
   ctx.lineWidth = 1;
 
   const size = 52;
@@ -2563,10 +2569,24 @@ function drawHazards() {
       ctx.fillStyle = "#ffffff";
 
       const beamCount = 8;
+
       for (let i = 0; i < beamCount; i++) {
         const bx = rect.x + (i + 0.5) * (rect.w / beamCount);
         const fall = active ? rect.h : (h.timer / h.warning) * rect.h;
         ctx.fillRect(bx - 7, rect.y, 14, fall);
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    if (h.type === "laneStrike") {
+      const active = h.timer > h.warning;
+      const laneHeight = canvas.height / 8;
+
+      for (const lane of h.lanes) {
+        ctx.globalAlpha = active ? 0.65 : 0.18;
+        ctx.fillStyle = active ? "#ff002f" : "#ff1f4f";
+        ctx.fillRect(0, lane * laneHeight, canvas.width, laneHeight);
       }
 
       ctx.globalAlpha = 1;
@@ -2589,6 +2609,36 @@ function drawHazards() {
       ctx.globalAlpha = h.timer > h.warning ? 0.75 : 0.28;
       ctx.fillStyle = h.color;
       ctx.fillRect(0, -h.width / 2, canvas.width * 2, h.width);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    if (h.type === "sword") {
+      const active = h.timer > h.warning;
+      const sy = active ? ((h.timer - h.warning) / h.duration) * (canvas.height + 160) - 80 : -80;
+
+      ctx.globalAlpha = active ? 0.95 : 0.35;
+      ctx.fillStyle = h.color;
+      ctx.fillRect(h.x - h.width / 2, active ? sy : 0, h.width, active ? 160 : canvas.height);
+      ctx.globalAlpha = 1;
+    }
+
+    if (h.type === "diagonal") {
+      ctx.save();
+      ctx.globalAlpha = h.timer > h.warning ? 0.8 : 0.25;
+      ctx.strokeStyle = h.color;
+      ctx.lineWidth = h.width;
+      ctx.beginPath();
+
+      if (h.kind === "slashA") {
+        ctx.moveTo(0, 0);
+        ctx.lineTo(canvas.width, canvas.height);
+      } else {
+        ctx.moveTo(canvas.width, 0);
+        ctx.lineTo(0, canvas.height);
+      }
+
+      ctx.stroke();
       ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -2619,11 +2669,9 @@ function drawParticles() {
     ctx.shadowBlur = 12;
     ctx.shadowColor = p.color;
     ctx.fillStyle = p.color;
-
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
   }
@@ -2634,11 +2682,11 @@ function drawBullets() {
     ctx.strokeStyle = b.color;
     ctx.lineWidth = b.r * 0.7;
     ctx.globalAlpha = 0.45;
-
     ctx.beginPath();
 
     for (let i = 0; i < b.trail.length; i++) {
       const t = b.trail[i];
+
       if (i === 0) ctx.moveTo(t.x, t.y);
       else ctx.lineTo(t.x, t.y);
     }
@@ -2649,11 +2697,9 @@ function drawBullets() {
     ctx.shadowBlur = 14;
     ctx.shadowColor = b.color;
     ctx.fillStyle = b.color;
-
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.shadowBlur = 0;
   }
 }
@@ -2663,31 +2709,43 @@ function drawEnemies() {
     ctx.save();
     ctx.translate(e.x, e.y);
 
-    ctx.shadowBlur = e.boss ? 30 : 15;
-    ctx.shadowColor = e.color;
+    ctx.shadowBlur = e.corrupted ? 36 : e.boss ? 30 : 15;
+    ctx.shadowColor = e.corrupted ? "#ff00ff" : e.color;
     ctx.fillStyle = e.hit > 0 ? "#ffffff" : e.color;
 
     if (e.boss) drawBossShape(e);
     else drawEnemyShape(e);
 
     ctx.shadowBlur = 0;
-
     ctx.fillStyle = "#101421";
     ctx.fillRect(-e.r, -e.r - 14, e.r * 2, 5);
 
     ctx.fillStyle = e.boss ? "#ff66aa" : "#67ff81";
-    ctx.fillRect(
-      -e.r,
-      -e.r - 14,
-      e.r * 2 * Math.max(0, e.hp / e.maxHp),
-      5
-    );
+    ctx.fillRect(-e.r, -e.r - 14, e.r * 2 * Math.max(0, e.hp / e.maxHp), 5);
 
     ctx.restore();
   }
 }
 
 function drawEnemyShape(e) {
+  if (e.type === "shooter") {
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = e.corrupted ? "#ffffff" : "#111827";
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = e.corrupted ? "#ff2f88" : e.voided ? "#6b3cff" : "#7dfcff";
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    return;
+  }
+
   if (e.type === "fast") {
     ctx.rotate(e.spin);
     ctx.beginPath();
@@ -2700,6 +2758,7 @@ function drawEnemyShape(e) {
     ctx.rotate(e.spin * 0.4);
     roundRect(-e.r, -e.r, e.r * 2, e.r * 2, 4);
     ctx.fill();
+
     ctx.fillStyle = "#2b0b22";
     ctx.fillRect(-e.r * 0.45, -e.r * 0.45, e.r * 0.9, e.r * 0.9);
   } else {
@@ -2710,31 +2769,10 @@ function drawEnemyShape(e) {
 }
 
 function drawBossShape(e) {
-  if (e.bossType === "FINAL") {
-    drawFinalFlowerBoss(0, 0, e.downed ? 0.78 : 1.15, e.color);
-    return;
-  }
-
-  if (e.bossType === "RAVAGER_1") {
-    drawRavagerCorpse(0, 0, 0.9);
-    return;
-  }
-
-  if (e.bossType === "RAVAGER_2") {
-    drawRavagerAwakenedShape(0, 0, e.r, e.color);
-    return;
-  }
-
-  if (
-    e.bossType === "RAVAGER_ECHO" ||
-    e.bossType === "RAVAGER_BURNING" ||
-    e.bossType === "RAVAGER_VOID" ||
-    e.bossType === "RAVAGER_IRON" ||
-    e.bossType === "RAVAGER_CROWNED"
-  ) {
-    drawRavagerEchoShape(0, 0, e.r, e.color, e.bossType);
-    return;
-  }
+  if (e.bossType === "FINAL") return drawFinalFlowerBoss(0, 0, e.downed ? 0.78 : 1.15, e.color);
+  if (e.bossType === "RAVAGER_1") return drawRavagerCorpse(0, 0, 0.9);
+  if (e.bossType === "RAVAGER_2") return drawRavagerAwakenedShape(0, 0, e.r, e.color);
+  if (isRavagerEcho(e.bossType)) return drawRavagerEchoShape(0, 0, e.r, e.color, e.bossType);
 
   if (e.bossType === "CHARGER") {
     ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x));
@@ -2793,42 +2831,21 @@ function drawBossShape(e) {
     return;
   }
 
-  if (e.bossType === "SUMMONER") {
-    ctx.beginPath();
-    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
-    ctx.fill();
-    for (let i = 0; i < 4; i++) {
-      const a = e.spin + (i * Math.PI * 2) / 4;
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * e.r * 1.25, Math.sin(a) * e.r * 1.25, 10, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    return;
-  }
-
-  if (e.bossType === "PULSER") {
-    ctx.beginPath();
-    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0, 0, e.r * 1.25 + Math.sin(performance.now() / 120) * 8, 0, Math.PI * 2);
-    ctx.stroke();
-    return;
-  }
-
   ctx.rotate(e.spin);
   ctx.beginPath();
+
   const points = e.phase === 2 ? 14 : 10;
+
   for (let i = 0; i < points; i++) {
     const a = (i * Math.PI * 2) / points;
-    const r = i % 2 === 0 ? e.r : e.r * 0.55;
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a) * r;
+    const rr = i % 2 === 0 ? e.r : e.r * 0.55;
+    const x = Math.cos(a) * rr;
+    const y = Math.sin(a) * rr;
+
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
+
   ctx.closePath();
   ctx.fill();
 }
@@ -2840,7 +2857,6 @@ function drawRavagerCorpse(x, y, scale) {
   ctx.fillStyle = "#5b6478";
   ctx.shadowBlur = 20;
   ctx.shadowColor = "#5b6478";
-
   ctx.beginPath();
   ctx.moveTo(-90, 20);
   ctx.lineTo(-40, -45);
@@ -2850,10 +2866,8 @@ function drawRavagerCorpse(x, y, scale) {
   ctx.lineTo(-70, 50);
   ctx.closePath();
   ctx.fill();
-
   ctx.fillStyle = "#1d2233";
   ctx.fillRect(-45, -10, 90, 20);
-
   ctx.shadowBlur = 0;
   ctx.restore();
 }
@@ -2863,16 +2877,18 @@ function drawRavagerAwakenedShape(x, y, r, color) {
   ctx.translate(x, y);
   ctx.rotate(performance.now() / 700);
   ctx.fillStyle = color;
-
   ctx.beginPath();
+
   for (let i = 0; i < 12; i++) {
     const a = (i * Math.PI * 2) / 12;
     const rr = i % 2 === 0 ? r * 1.25 : r * 0.55;
     const px = Math.cos(a) * rr;
     const py = Math.sin(a) * rr;
+
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
+
   ctx.closePath();
   ctx.fill();
 
@@ -2893,20 +2909,22 @@ function drawRavagerEchoShape(x, y, r, color, type) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(performance.now() / 600);
-
   ctx.fillStyle = color;
 
   const spikes = type === "RAVAGER_CROWNED" ? 16 : 12;
 
   ctx.beginPath();
+
   for (let i = 0; i < spikes; i++) {
     const a = (i * Math.PI * 2) / spikes;
     const rr = i % 2 === 0 ? r * 1.2 : r * 0.6;
     const px = Math.cos(a) * rr;
     const py = Math.sin(a) * rr;
+
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
+
   ctx.closePath();
   ctx.fill();
 
@@ -2956,6 +2974,7 @@ function drawFinalFlowerBoss(x, y, scale, color) {
   ctx.fill();
 
   ctx.fillStyle = "#ffde59";
+
   for (let i = 0; i < 7; i++) {
     const a = t * 1.7 + (i * Math.PI * 2) / 7;
     ctx.beginPath();
@@ -3025,7 +3044,6 @@ function drawPlayer() {
 function drawCrosshair() {
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 2;
-
   ctx.beginPath();
   ctx.moveTo(mouse.x - 10, mouse.y);
   ctx.lineTo(mouse.x + 10, mouse.y);
@@ -3039,32 +3057,26 @@ function drawUI() {
   const char = characterData[save.selectedCharacter] || characterData.CORE;
   const now = performance.now() / 1000;
   const abilityReady = now - player.lastAbility >= player.abilityCooldown;
+  const dashReady = Date.now() / 1000 - player.lastDash > player.dashCooldown;
 
   ctx.textAlign = "left";
   ctx.font = "16px Arial";
   ctx.fillStyle = "white";
 
-  ctx.fillText("Wave: " + wave + (wave > 50 || save.chaosUnlocked ? " CHAOS" : ""), 14, 25);
+  ctx.fillText("Wave: " + wave + (wave > 50 || save.chaosUnlocked ? " CHAOS" : "") + (save.corruptedMode ? " CORRUPTED" : ""), 14, 25);
   ctx.fillText("Character: " + char.name, 14, 47);
   ctx.fillText("HP: " + Math.ceil(player.hp) + " / " + player.maxHp, 14, 69);
-  ctx.fillText(
-    "Weapon: " + weaponName + " (" + (player.weaponIndex + 1) + "/" + player.weapons.length + ")",
-    14,
-    91
-  );
+  ctx.fillText("Weapon: " + weaponName + " (" + (player.weaponIndex + 1) + "/" + player.weapons.length + ")", 14, 91);
   ctx.fillText("Damage: " + player.damage.toFixed(2), 14, 113);
-  ctx.fillText("Permanent Coins: " + save.coins, 14, 135);
+  ctx.fillText("Coins: " + save.coins, 14, 135);
 
   ctx.fillStyle = "#101421";
   ctx.fillRect(14, 150, 230, 16);
-
   ctx.fillStyle = "#57ff85";
   ctx.fillRect(14, 150, 230 * Math.max(0, player.hp / player.maxHp), 16);
-
   ctx.strokeStyle = "white";
   ctx.strokeRect(14, 150, 230, 16);
 
-  const dashReady = Date.now() / 1000 - player.lastDash > player.dashCooldown;
   ctx.fillStyle = dashReady ? "#7dfcff" : "#37466f";
   ctx.fillText("Dash: " + (dashReady ? "READY" : "COOLDOWN"), 14, 188);
 
@@ -3073,11 +3085,16 @@ function drawUI() {
 
   ctx.fillStyle = save.evolutionUnlocked ? "#ffde59" : "#6b7280";
   ctx.font = "13px Arial";
-  ctx.fillText("Weapon Evolution: " + (save.evolutionUnlocked ? "ON" : "LOCKED"), 14, 232);
+  ctx.fillText("Evolution: " + (save.evolutionUnlocked ? "ON" : "LOCKED") + " | Crit: " + Math.round(player.critChance * 100) + "%", 14, 232);
+}
+
+function getBoss() {
+  return enemies.find(e => e.boss);
 }
 
 function drawBossHealthBar() {
   const boss = getBoss();
+
   if (!boss) return;
 
   const barWidth = Math.min(canvas.width * 0.65, 720);
@@ -3089,8 +3106,8 @@ function drawBossHealthBar() {
   ctx.font = "bold 18px Arial";
   ctx.fillStyle = "#ffffff";
   ctx.shadowBlur = 10;
-  ctx.shadowColor = "#ff3b93";
-  ctx.fillText(bossNames[boss.bossType] || "BOSS", canvas.width / 2, y - 5);
+  ctx.shadowColor = boss.corrupted ? "#ff00ff" : "#ff3b93";
+  ctx.fillText((boss.corrupted ? "CORRUPTED " : boss.voided ? "VOID " : "") + (bossNames[boss.bossType] || "BOSS"), canvas.width / 2, y - 5);
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = "#130716";
@@ -3137,19 +3154,16 @@ function drawBossWarningOverlay() {
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2 - 35);
   ctx.scale(pulse, pulse);
-
   ctx.textAlign = "center";
   ctx.shadowBlur = 25;
   ctx.shadowColor = "#ff3b93";
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 48px Arial";
   ctx.fillText(currentBossName.toUpperCase(), 0, 0);
-
   ctx.shadowBlur = 0;
   ctx.font = "20px Arial";
   ctx.fillStyle = "#ffd0e5";
   ctx.fillText("Get ready...", 0, 42);
-
   ctx.restore();
 }
 
@@ -3187,8 +3201,8 @@ function drawCutscene() {
   ctx.fillStyle = current.color || "#ffffff";
   ctx.font = "bold " + (current.size || 34) + "px Arial";
   ctx.fillText(current.text, canvas.width / 2, canvas.height / 2 - 150);
-
   ctx.shadowBlur = 0;
+
   ctx.font = "16px Arial";
   ctx.fillStyle = "#c7d4ff";
   ctx.fillText("Press ENTER to skip line", canvas.width / 2, canvas.height - 60);
@@ -3204,7 +3218,7 @@ function drawMenu() {
 
   ctx.textAlign = "center";
   ctx.shadowBlur = 22;
-  ctx.shadowColor = "#7dfcff";
+  ctx.shadowColor = save.corruptedMode ? "#ff00ff" : "#7dfcff";
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 52px Arial";
   ctx.fillText("NEON BOSS SHOOTER", canvas.width / 2, canvas.height / 2 - 230);
@@ -3212,7 +3226,7 @@ function drawMenu() {
   ctx.shadowBlur = 0;
   ctx.font = "20px Arial";
   ctx.fillStyle = "#cfe7ff";
-  ctx.fillText("Public Edition V2 • Ravager Story • Chaos Mode", canvas.width / 2, canvas.height / 2 - 180);
+  ctx.fillText("Final Playtest Build • Ravager Story • Chaos • Corrupted Mode", canvas.width / 2, canvas.height / 2 - 180);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 24px Arial";
@@ -3223,24 +3237,29 @@ function drawMenu() {
 
   ctx.font = "16px Arial";
   ctx.fillStyle = "#b9c8ff";
-  ctx.fillText("Selected Character: " + char.name + " — Starts with " + char.startWeapon, canvas.width / 2, canvas.height / 2 + 40);
-  ctx.fillText("Passive: " + char.passive, canvas.width / 2, canvas.height / 2 + 66);
-  ctx.fillText("Ability: " + char.manual, canvas.width / 2, canvas.height / 2 + 92);
-  ctx.fillText("Permanent Coins: " + save.coins + " | Best Wave: " + save.bestWave, canvas.width / 2, canvas.height / 2 + 122);
+  ctx.fillText("Selected: " + char.name + " — Starts with " + char.startWeapon, canvas.width / 2, canvas.height / 2 + 40);
+  ctx.fillText("Coins: " + save.coins + " | Best Wave: " + save.bestWave, canvas.width / 2, canvas.height / 2 + 70);
+
   ctx.fillText(
-    "Damage " +
-      save.upgrades.damage +
-      " | Fire Rate " +
-      save.upgrades.fireRate +
-      " | Health " +
-      save.upgrades.health +
-      " | Speed " +
-      save.upgrades.speed,
+    "Damage " + save.upgrades.damage + "/" + UPGRADE_CAPS.damage +
+    " | Fire Rate " + save.upgrades.fireRate + "/" + UPGRADE_CAPS.fireRate +
+    " | Health " + save.upgrades.health + "/" + UPGRADE_CAPS.health +
+    " | Speed " + save.upgrades.speed + "/" + UPGRADE_CAPS.speed,
     canvas.width / 2,
-    canvas.height / 2 + 150
+    canvas.height / 2 + 100
   );
-  ctx.fillText("Achievements: " + unlocked + " / " + total, canvas.width / 2, canvas.height / 2 + 178);
-  ctx.fillText("Wave 10: Evolutions • Wave 25: Void • Wave 50: Chaos + Overlord", canvas.width / 2, canvas.height / 2 + 206);
+
+  ctx.fillText("Achievements: " + unlocked + " / " + total, canvas.width / 2, canvas.height / 2 + 128);
+  ctx.fillText("Wave 10: Evolutions • Wave 25: Void • Wave 50: Chaos + Overlord", canvas.width / 2, canvas.height / 2 + 156);
+
+  ctx.fillStyle = save.corruptedMode ? "#ff2f88" : "#6b7280";
+  ctx.fillText(
+    save.corruptedUnlocked
+      ? "Press V: Corrupted Mode " + (save.corruptedMode ? "ON" : "OFF")
+      : "Corrupted Mode: Locked until Worldbreaker is defeated",
+    canvas.width / 2,
+    canvas.height / 2 + 184
+  );
 }
 
 function drawGameOver() {
@@ -3253,31 +3272,31 @@ function drawGameOver() {
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 52px Arial";
   ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 90);
-
   ctx.shadowBlur = 0;
+
   ctx.font = "22px Arial";
   ctx.fillStyle = "#ffffff";
   ctx.fillText("You reached wave " + wave, canvas.width / 2, canvas.height / 2 - 30);
   ctx.fillText("Best Wave: " + save.bestWave, canvas.width / 2, canvas.height / 2 + 5);
-  ctx.fillText("Permanent Coins: " + save.coins, canvas.width / 2, canvas.height / 2 + 40);
+  ctx.fillText("Coins: " + save.coins, canvas.width / 2, canvas.height / 2 + 40);
 
   ctx.font = "bold 24px Arial";
   ctx.fillText("Press ENTER to restart", canvas.width / 2, canvas.height / 2 + 95);
 }
 
-
-// =====================================================
+// ==========================
 // MAIN LOOP
-// =====================================================
-
+// ==========================
 function loop(t) {
   const now = t / 1000;
   const dt = Math.min(0.033, now - lastTime || 0);
   lastTime = now;
 
-  if (state === "playing") update(dt, now);
-  else if (state === "bossWarning") updateBossWarning(dt);
-  else if (state === "cutscene") {
+  if (state === "playing") {
+    update(dt, now);
+  } else if (state === "bossWarning") {
+    updateBossWarning(dt);
+  } else if (state === "cutscene") {
     updateStars(dt);
     updateCutscene(dt);
   } else {
@@ -3289,3 +3308,6 @@ function loop(t) {
 }
 
 requestAnimationFrame(loop);
+
+})();
+
