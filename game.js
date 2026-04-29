@@ -112,7 +112,7 @@ const weaponData = {
   LASER:   { color: "#ff5eec", cooldown: 0.12, sound: 980 },
   MINIGUN: { color: "#63ff8b", cooldown: 0.055, sound: 520 },
   RPG:     { color: "#ff9f43", cooldown: 0.95, sound: 150 },
-  RAILGUN: { color: "#ffffff", cooldown: 0.82, sound: 1100 },
+  RAILGUN: { color: "#ffffff", cooldown: 1.45, sound: 1100 },
   FLAMER:  { color: "#ff4d2e", cooldown: 0.045, sound: 180 },
   SPARK:   { color: "#7dfcff", cooldown: 0.165, sound: 760 },
   ORBIT:   { color: "#b28cff", cooldown: 0.20, sound: 650 }
@@ -255,6 +255,35 @@ function unlockAudio() {
 }
 
 function playSound(freq, duration, type, volume) {
+  function bossSfx(kind) {
+  if (kind === "boss") {
+    playSound(90, 0.22, "sawtooth", 0.08);
+    setTimeout(() => playSound(55, 0.28, "sawtooth", 0.09), 180);
+  }
+
+  if (kind === "ravager") {
+    playSound(60, 0.35, "sawtooth", 0.09);
+    setTimeout(() => playSound(180, 0.12, "square", 0.06), 160);
+    setTimeout(() => playSound(90, 0.28, "sawtooth", 0.08), 320);
+  }
+
+  if (kind === "worldbreaker") {
+    playSound(45, 0.45, "sawtooth", 0.10);
+    setTimeout(() => playSound(90, 0.25, "sawtooth", 0.08), 160);
+    setTimeout(() => playSound(220, 0.18, "square", 0.07), 320);
+    setTimeout(() => playSound(55, 0.45, "sawtooth", 0.10), 480);
+  }
+
+  if (kind === "beam") {
+    playSound(320, 0.08, "triangle", 0.045);
+    setTimeout(() => playSound(90, 0.12, "sawtooth", 0.06), 130);
+  }
+
+  if (kind === "final") {
+    playSound(700, 0.06, "triangle", 0.045);
+    setTimeout(() => playSound(180, 0.12, "sawtooth", 0.055), 120);
+  }
+}
   if (!audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
