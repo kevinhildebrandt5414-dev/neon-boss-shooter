@@ -1048,6 +1048,11 @@ function spawnEnemy(type) {
 }
 
 function spawnBoss(type, chaos, small) {
+    const bossCount = enemies.filter(e => e.boss).length;
+
+  if (bossCount >= 4 && type !== "FINAL") {
+    return;
+  }
   const p = randomEdgePosition();
 
   let hp = 65 + wave * 17;
@@ -1991,7 +1996,7 @@ function updateFinalBoss(e, dt, angle, mult) {
 
   if (e.laneTimer <= 0) {
     e.laneTimer = e.phase === 3 ? 1.15 : e.phase === 2 ? 1.45 : 1.75;
-    createLaneStrike(e.phase === 3 ? 0.42 : e.phase === 2 ? 0.52 : 0.62, 50);
+   createLaneStrike(e.phase === 3 ? 0.53 : e.phase === 2 ? 0.65 : 0.78, 50);
   }
 
   if (e.eyeTimer <= 0) {
@@ -2068,7 +2073,7 @@ function createLaneStrike(warning, damage) {
 
   hazards.push({
     type: "laneStrike",
-    lanes: lanes.slice(0, 4),
+    lanes: lanes.slice(0, 3),
     timer: 0,
     warning,
     duration: 0.32,
