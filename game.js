@@ -417,7 +417,10 @@ addEventListener("keydown", (e) => {
     resetControls();
     return;
   }
-
+if ((k === "1" || e.code === "Digit1" || e.code === "Numpad1") && state === "playing") {
+  useCharacterAbility();
+  return;
+}
   if (k === "m") {
     state = "menu";
     resetControls();
