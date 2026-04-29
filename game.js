@@ -239,7 +239,7 @@ let player = {
   abilityCooldown: 18, lastAbility: -999,
   shieldTimer: 0, slowTimeTimer: 0, ghostTimer: 0, overchargeTimer: 0, rageTimer: 0,
   critChance: 0, vampireCore: false, shieldBreaker: false, orbRunner: false, beamResist: false,
-  killsSinceHeal: 0
+  killsSinceHeal: 0, dashTimer: 0, dashDuration: 0.14, dashDistance: 190, dashDirX: 0, dashDirY: 0
 };
 
 // ==========================
@@ -672,7 +672,11 @@ function startGame() {
   player.orbRunner = false;
   player.beamResist = false;
   player.killsSinceHeal = 0;
-
+player.dashTimer = 0;
+player.dashDuration = 0.14;
+player.dashDistance = 190;
+player.dashDirX = 0;
+player.dashDirY = 0;
   spawnWave();
   playSound(260, 0.12, "sawtooth", 0.06);
 }
@@ -1475,21 +1479,34 @@ function update(dt, now) {
 
   if (player.orbRunner && orbs.length > 0) speed *= 1.25;
 
-  if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
-    player.lastDash = now;
-    player.invincible = 0.3;
-    speed *= 11.2;
-    burst(player.x, player.y, "#6aa8ff", 30, 360);
-    playSound(160, 0.08, "triangle", 0.06);
-    screenShake = Math.max(screenShake, 5);
+ if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
+  player.lastDash = now;
+  player.invincible = 0.3;
+  player.dashTimer = player.dashDuration;
+
+  player.dashDirX = mx / len;
+  player.dashDirY = my / len;
+
+  if (mx === 0 && my === 0) {
+    const aim = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    player.dashDirX = Math.cos(aim);
+    player.dashDirY = Math.sin(aim);
   }
 
+  burst(player.x, player.y, "#6aa8ff", 30, 360);
+  playSound(160, 0.08, "triangle", 0.06);
+  screenShake = Math.max(screenShake, 5);
+}
+
+if (player.dashTimer > 0) {
+  const dashStep = player.dashDistance * (dt / player.dashDuration);
+  player.x += player.dashDirX * dashStep;
+  player.y += player.dashDirY * dashStep;
+  player.dashTimer -= dt;
+} else {
   player.x += (mx / len) * speed * dt;
   player.y += (my / len) * speed * dt;
-
-  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
-  player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
-
+}
   player.invincible -= dt;
 
   if (mouse.down || keys[" "]) shoot(now);
