@@ -414,7 +414,7 @@ addEventListener("keydown", (e) => {
     resetControls();
   }
 
-  if (k === "1" && state === "playing") useCharacterAbility();
+  if ((k === "p" || e.key === "Escape") && state === "playing") {   state = "paused";   resetControls();   return; }  if ((k === "p" || e.key === "Escape" || k === "r") && state === "paused") {   state = "playing";   resetControls();   return; }  if (k === "m" && state === "paused") {   state = "menu";   resetControls();   return; }
 
   if ((state === "menu" || state === "dead") && e.key === "Enter") startGame();
 
@@ -2522,6 +2522,7 @@ function draw() {
 
   if (state === "menu") drawMenu();
   if (state === "dead") drawGameOver();
+  if (state === "paused") drawPauseMenu();
   if (state === "bossWarning") drawBossWarningOverlay();
   if (state === "cutscene") drawCutscene();
 }
@@ -3278,7 +3279,27 @@ function drawMenu() {
     canvas.height / 2 + 184
   );
 }
+function drawPauseMenu() {
+  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  ctx.textAlign = "center";
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = "#7dfcff";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 52px Arial";
+  ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2 - 90);
+  ctx.shadowBlur = 0;
+
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#c7d4ff";
+  ctx.fillText("Press R, P, or ESC to resume", canvas.width / 2, canvas.height / 2 - 25);
+  ctx.fillText("Press M to return to main menu", canvas.width / 2, canvas.height / 2 + 20);
+
+  ctx.font = "15px Arial";
+  ctx.fillStyle = "#6b7280";
+  ctx.fillText("Current run progress will be lost if you return to the menu.", canvas.width / 2, canvas.height / 2 + 70);
+}
 function drawGameOver() {
   ctx.fillStyle = "rgba(0,0,0,0.78)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
