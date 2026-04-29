@@ -382,6 +382,27 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   keys[k] = true;
   unlockAudio();
+  if (state === "paused") {
+  if (k === "p" || k === "r" || e.key === "Escape") {
+    state = "playing";
+    resetControls();
+    return;
+  }
+
+  if (k === "m") {
+    state = "menu";
+    resetControls();
+    return;
+  }
+
+  return;
+}
+
+if (state === "playing" && (k === "p" || e.key === "Escape")) {
+  state = "paused";
+  resetControls();
+  return;
+}
 
   if (e.key === "F1") {
     e.preventDefault();
@@ -414,7 +435,7 @@ addEventListener("keydown", (e) => {
     resetControls();
   }
 
-  if ((k === "p" || e.key === "Escape") && state === "playing") {   state = "paused";   resetControls();   return; }  if ((k === "p" || e.key === "Escape" || k === "r") && state === "paused") {   state = "playing";   resetControls();   return; }  if (k === "m" && state === "paused") {   state = "menu";   resetControls();   return; }
+
 
   if ((state === "menu" || state === "dead") && e.key === "Enter") startGame();
 
