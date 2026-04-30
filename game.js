@@ -551,10 +551,42 @@ function openDevConsole() {
     save.corruptedUnlocked = true;
     saveGame();
     alert("Unlocked.");
-  } else if (cmd === "god") {
-    godMode = !godMode;
-    alert("God mode: " + godMode);
-  } else if (cmd === "reset") {
+} else if (cmd === "god") {
+  godMode = !godMode;
+  alert("God mode: " + godMode);
+} else if (cmd === "panic") {
+  godMode = false;
+  state = "menu";
+  wave = 1;
+
+  enemies = [];
+  bullets = [];
+  hazards = [];
+  orbs = [];
+  particles = [];
+  floatingTexts = [];
+
+  cutscene = null;
+  bossWarningTimer = 0;
+  pendingBossType = null;
+  currentBossName = "";
+  wave25Stage = 0;
+  finalStarted = false;
+  finalDownTimer = 0;
+  screenShake = 0;
+
+  player.hp = player.maxHp;
+  player.invincible = 0;
+  player.dashTimer = 0;
+  player.shieldTimer = 0;
+  player.slowTimeTimer = 0;
+  player.ghostTimer = 0;
+  player.overchargeTimer = 0;
+  player.rageTimer = 0;
+
+  resetControls();
+  alert("Panic reset complete.");
+} else if (cmd === "reset") {
     if (confirm("Reset save?")) {
       localStorage.removeItem(SAVE_KEY);
       location.reload();
