@@ -2752,13 +2752,16 @@ function cleanObjects(dt) {
 }
 
 function chooseWaveBuff() {
-  const buffs = [
+  const normalBuffs = [
     { name: "+Damage", color: "#ff5eec", apply: () => { player.damage += 0.14; } },
     { name: "+Speed", color: "#9f7dff", apply: () => { player.speed += 12; } },
     { name: "+Max HP", color: "#6cff7a", apply: () => { player.maxHp += 8; player.hp = Math.min(player.maxHp, player.hp + 12); } },
     { name: "+Fire Rate", color: "#7dfcff", apply: () => { player.fireRateBonus += 0.006; } },
     { name: "+Bullet Speed", color: "#ffd36a", apply: () => { player.bulletSpeed += 22; } },
-    { name: "+Armor", color: "#ffffff", apply: () => { player.armor += 0.35; } },
+    { name: "+Armor", color: "#ffffff", apply: () => { player.armor += 0.35; } }
+  ];
+
+  const coreBuffs = [
     { name: "Crit Core", color: "#ffde59", apply: () => { player.critChance = Math.min(0.10, player.critChance + 0.02); } },
     { name: "Vampire Core", color: "#ff4f9f", apply: () => { player.vampireCore = true; } },
     { name: "Shield Breaker", color: "#ff9f43", apply: () => { player.shieldBreaker = true; } },
@@ -2766,11 +2769,22 @@ function chooseWaveBuff() {
     { name: "Beam Guard", color: "#b28cff", apply: () => { player.beamResist = true; } }
   ];
 
+  function rollBuff() {
+    if (Math.random() < 1 / 7) {
+      return coreBuffs[Math.floor(Math.random() * coreBuffs.length)];
+    }
+
+    return normalBuffs[Math.floor(Math.random() * normalBuffs.length)];
+  }
+
   let choices = [];
 
   while (choices.length < 3) {
-    const b = buffs[Math.floor(Math.random() * buffs.length)];
-    if (!choices.includes(b)) choices.push(b);
+    const b = rollBuff();
+
+    if (!choices.some(choice => choice.name === b.name)) {
+      choices.push(b);
+    }
   }
 
   let msg = "WAVE CLEAR!\n\nChoose 1 free run buff:\n\n";
@@ -2794,8 +2808,6 @@ function chooseWaveBuff() {
   floatingText(canvas.width / 2, canvas.height / 2, "WAVE CLEAR: " + buff.name, buff.color, 24);
   playSound(600, 0.09, "triangle", 0.05);
 }
-
-function bossClearReward(showChoice) {
   player.hp = player.maxHp;
   save.coins += wave === 50 ? 50 : 10;
   saveGame();
