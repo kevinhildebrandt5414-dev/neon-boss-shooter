@@ -1,6 +1,6 @@
 // =====================================================
-// NEON BOSS SHOOTER - FINAL PLAYTEST BUILD
-// Paste PART 1 + PART 2 together into game.js
+// NEON BOSS SHOOTER v1.2 REBUILD
+// Paste PART 1 + PART 2 + PART 3 + PART 4 together into game.js
 // No <script> tags.
 // =====================================================
 
@@ -32,7 +32,7 @@ hint.style.fontSize = "13px";
 hint.style.pointerEvents = "none";
 hint.style.textShadow = "0 0 8px #000";
 hint.textContent =
-  "WASD/Arrows move • Click/Space shoot • Q/E weapon • Shift/X dash • 1 ability • Enter start • M shop • C characters • A achievements • V corrupted";
+  "WASD/Arrows move • Click/Space shoot • Q/E weapon • Shift/X dash • 1/F ability • P/Esc pause • Enter start • M shop • C characters • A achievements • V corrupted";
 document.body.appendChild(hint);
 
 function resize() {
@@ -43,9 +43,10 @@ addEventListener("resize", resize);
 resize();
 
 // ==========================
-// SAVE
+// SAVE DATA
 // ==========================
-const SAVE_KEY = "neonBossShooterFinalPlaytestV1";
+// New clean save key. This avoids old broken patch data from causing bugs.
+const SAVE_KEY = "neonBossShooterV12Clean";
 
 let save = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {
   coins: 0,
@@ -102,7 +103,12 @@ const achievementList = {
   rich: "Rich Core - Hold 50 permanent coins",
   firstCharacter: "New Hero - Buy your first character",
   voidUnlocked: "Void Opened - Unlock Void",
-  overlordUnlocked: "Boss Reborn - Unlock Overlord"
+  overlordUnlocked: "Boss Reborn - Unlock Overlord",
+
+  phantomUnlocked: "Phantom Trial - Reach wave 40 with Ghost",
+  titanUnlocked: "Titan Trial - Defeat Worldbreaker with Tank",
+  eclipseUnlocked: "Eclipse Trial - Reach chaos wave 60",
+  apexUnlocked: "Apex Trial - Defeat Corrupted Worldbreaker"
 };
 
 const weaponData = {
@@ -115,49 +121,83 @@ const weaponData = {
   RAILGUN: { color: "#ffffff", cooldown: 1.45, sound: 1100 },
   FLAMER:  { color: "#ff4d2e", cooldown: 0.045, sound: 180 },
   SPARK:   { color: "#7dfcff", cooldown: 0.165, sound: 760 },
-  ORBIT:   { color: "#b28cff", cooldown: 0.20, sound: 650 }
+  ORBIT:   { color: "#b28cff", cooldown: 0.20, sound: 650 },
+  NOVABURST: { color: "#ff2f88", cooldown: 0.35, sound: 920 }
 };
 
 const characterData = {
   CORE: {
     name: "Core", cost: 0, color: "#65b7ff", ring: "#7dfcff", startWeapon: "PISTOL",
     maxHp: 115, speed: 270, damage: 1.25, fireRateBonus: 0, armor: 0,
-    passive: "Balanced.", manual: "Small heal.", abilityCooldown: 24
+    passive: "Balanced starter.", manual: "Small heal.", abilityCooldown: 24,
+    lockedText: ""
   },
   BLAZE: {
     name: "Blaze", cost: 125, color: "#ff6b3d", ring: "#ffde59", startWeapon: "FLAMER",
     maxHp: 100, speed: 260, damage: 1.5, fireRateBonus: 0.01, armor: 0,
-    passive: "High damage.", manual: "Fire nova.", abilityCooldown: 20
+    passive: "Close-range crowd clear.", manual: "Fire nova.", abilityCooldown: 20,
+    lockedText: ""
   },
   VOLT: {
     name: "Volt", cost: 150, color: "#7dfcff", ring: "#ffffff", startWeapon: "SPARK",
     maxHp: 90, speed: 310, damage: 1.1, fireRateBonus: 0.04, armor: 0,
-    passive: "Fast.", manual: "Slow time.", abilityCooldown: 24
+    passive: "Fast control core.", manual: "Slow time.", abilityCooldown: 24,
+    lockedText: ""
   },
   TANK: {
     name: "Tank", cost: 175, color: "#6cff7a", ring: "#b6ffca", startWeapon: "RPG",
     maxHp: 175, speed: 225, damage: 1.18, fireRateBonus: 0, armor: 4,
-    passive: "Tanky.", manual: "Shield.", abilityCooldown: 25
+    passive: "Safest long-run core.", manual: "Shield.", abilityCooldown: 25,
+    lockedText: ""
   },
   GHOST: {
     name: "Ghost", cost: 250, color: "#b28cff", ring: "#ff5eec", startWeapon: "BURST",
     maxHp: 85, speed: 345, damage: 1.15, fireRateBonus: 0.015, armor: 0,
-    passive: "Very fast.", manual: "Ghost mode.", abilityCooldown: 22
+    passive: "Extreme movement.", manual: "Ghost mode.", abilityCooldown: 22,
+    lockedText: ""
   },
   NOVA: {
     name: "Nova", cost: 250, color: "#ffffff", ring: "#ff5eec", startWeapon: "RAILGUN",
     maxHp: 100, speed: 255, damage: 1.7, fireRateBonus: 0, armor: 1,
-    passive: "Glass cannon.", manual: "Overcharge.", abilityCooldown: 28
+    passive: "Glass cannon.", manual: "Overcharge.", abilityCooldown: 28,
+    lockedText: ""
   },
   VOID: {
     name: "Void", cost: 0, color: "#2b114f", ring: "#b28cff", startWeapon: "ORBIT",
     maxHp: 120, speed: 295, damage: 1.35, fireRateBonus: 0.02, armor: 1,
-    passive: "Wave 25 unlock.", manual: "Void pull.", abilityCooldown: 24
+    passive: "Wave 25 unlock. Control core.", manual: "Void push.", abilityCooldown: 24,
+    lockedText: "Unlock: defeat wave 25 Ravager"
   },
   OVERLORD: {
     name: "Overlord", cost: 0, color: "#ff2f88", ring: "#ffde59", startWeapon: "RPG",
     maxHp: 145, speed: 265, damage: 1.6, fireRateBonus: 0.015, armor: 2,
-    passive: "Wave 50 unlock.", manual: "Boss rage.", abilityCooldown: 30
+    passive: "Wave 50 reward core.", manual: "Boss rage.", abilityCooldown: 30,
+    lockedText: "Unlock: defeat Worldbreaker"
+  },
+
+  PHANTOM: {
+    name: "Phantom", cost: 0, color: "#dac7ff", ring: "#8d6bff", startWeapon: "BURST",
+    maxHp: 95, speed: 370, damage: 1.35, fireRateBonus: 0.02, armor: 0,
+    passive: "Ghost trial reward. Fast and slippery.", manual: "Phase blink.", abilityCooldown: 20,
+    lockedText: "Unlock: reach wave 40 with Ghost"
+  },
+  TITAN: {
+    name: "Titan", cost: 0, color: "#8cff9f", ring: "#ffffff", startWeapon: "RPG",
+    maxHp: 220, speed: 230, damage: 1.35, fireRateBonus: 0, armor: 7,
+    passive: "Tank trial reward. Huge defense.", manual: "Fortress pulse.", abilityCooldown: 28,
+    lockedText: "Unlock: defeat Worldbreaker with Tank"
+  },
+  ECLIPSE: {
+    name: "Eclipse", cost: 0, color: "#ffde59", ring: "#2b114f", startWeapon: "LASER",
+    maxHp: 130, speed: 310, damage: 1.45, fireRateBonus: 0.025, armor: 2,
+    passive: "Chaos wave 60 reward.", manual: "Solar collapse.", abilityCooldown: 26,
+    lockedText: "Unlock: reach chaos wave 60"
+  },
+  APEX: {
+    name: "Apex", cost: 0, color: "#ffffff", ring: "#ff2f88", startWeapon: "NOVABURST",
+    maxHp: 210, speed: 360, damage: 1.9, fireRateBonus: 0.035, armor: 5,
+    passive: "Hardest reward. High everything.", manual: "Apex annihilation.", abilityCooldown: 30,
+    lockedText: "Unlock: defeat Corrupted Worldbreaker"
   }
 };
 
@@ -219,8 +259,9 @@ let wave25Stage = 0;
 let finalStarted = false;
 let finalDownTimer = 0;
 let godMode = false;
+let runWasCorrupted = false;
 
-for (let i = 0; i < 160; i++) {
+for (let i = 0; i < 170; i++) {
   stars.push({
     x: Math.random() * canvas.width,
     y: Math.random() * canvas.height,
@@ -231,19 +272,45 @@ for (let i = 0; i < 160; i++) {
 }
 
 let player = {
-  x: canvas.width / 2, y: canvas.height / 2, r: 18,
-  hp: 100, maxHp: 100, speed: 260, damage: 1.2,
-  weaponIndex: 0, weapons: ["PISTOL"], lastShot: 0, bulletSpeed: 760,
-  dashCooldown: 3.3, lastDash: -99, invincible: 0,
-  fireRateBonus: 0, pelletBonus: 0, armor: 0,
-  abilityCooldown: 18, lastAbility: -999,
-  shieldTimer: 0, slowTimeTimer: 0, ghostTimer: 0, overchargeTimer: 0, rageTimer: 0,
-  critChance: 0, vampireCore: false, shieldBreaker: false, orbRunner: false, beamResist: false,
-  killsSinceHeal: 0, dashTimer: 0, dashDuration: 0.14, dashDistance: 190, dashDirX: 0, dashDirY: 0
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  r: 18,
+  hp: 100,
+  maxHp: 100,
+  speed: 260,
+  damage: 1.2,
+  weaponIndex: 0,
+  weapons: ["PISTOL"],
+  lastShot: 0,
+  bulletSpeed: 760,
+  dashCooldown: 3.3,
+  lastDash: -99,
+  dashTimer: 0,
+  dashDuration: 0.14,
+  dashDistance: 190,
+  dashDirX: 0,
+  dashDirY: 0,
+  invincible: 0,
+  fireRateBonus: 0,
+  pelletBonus: 0,
+  armor: 0,
+  abilityCooldown: 18,
+  lastAbility: -999,
+  shieldTimer: 0,
+  slowTimeTimer: 0,
+  ghostTimer: 0,
+  overchargeTimer: 0,
+  rageTimer: 0,
+  critChance: 0,
+  vampireCore: false,
+  shieldBreaker: false,
+  orbRunner: false,
+  beamResist: false,
+  killsSinceHeal: 0
 };
 
 // ==========================
-// UTIL
+// BASIC UTILS
 // ==========================
 function resetControls() {
   keys = {};
@@ -255,7 +322,25 @@ function unlockAudio() {
 }
 
 function playSound(freq, duration, type, volume) {
-  function bossSfx(kind) {
+  if (!audioCtx) return;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = type || "sine";
+  osc.frequency.value = freq;
+
+  gain.gain.setValueAtTime(volume || 0.04, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function bossSfx(kind) {
   if (kind === "boss") {
     playSound(90, 0.22, "sawtooth", 0.08);
     setTimeout(() => playSound(55, 0.28, "sawtooth", 0.09), 180);
@@ -283,37 +368,13 @@ function playSound(freq, duration, type, volume) {
     playSound(700, 0.06, "triangle", 0.045);
     setTimeout(() => playSound(180, 0.12, "sawtooth", 0.055), 120);
   }
-}
-  if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = type || "sine";
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(volume || 0.04, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration);
-}
-function lockPlayerInBounds() {
-  if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
-    player.x = canvas.width / 2;
-    player.y = canvas.height / 2;
-    player.dashTimer = 0;
-    return;
-  }
 
-  const oldX = player.x;
-  const oldY = player.y;
-
-  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
-  player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
-
-  if (player.x !== oldX || player.y !== oldY) {
-    player.dashTimer = 0;
+  if (kind === "ability") {
+    playSound(900, 0.08, "triangle", 0.05);
+    setTimeout(() => playSound(500, 0.10, "sine", 0.04), 90);
   }
 }
+
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
@@ -340,8 +401,10 @@ function burst(x, y, color, amount, power) {
   for (let i = 0; i < amount; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = Math.random() * power + 40;
+
     particles.push({
-      x, y,
+      x,
+      y,
       vx: Math.cos(a) * s,
       vy: Math.sin(a) * s,
       r: Math.random() * 4 + 2,
@@ -351,30 +414,54 @@ function burst(x, y, color, amount, power) {
   }
 }
 
-function burstVisual(x, y, color, amount) {
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = color;
-  for (let i = 0; i < amount; i++) {
-    const a = (i / amount) * Math.PI * 2;
-    const r = 70 + Math.sin(performance.now() / 120 + i) * 20;
-    ctx.beginPath();
-    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 10, 0, Math.PI * 2);
-    ctx.fill();
+function lockPlayerInBounds() {
+  if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+    player.dashTimer = 0;
+    return;
   }
-  ctx.globalAlpha = 1;
+
+  const oldX = player.x;
+  const oldY = player.y;
+
+  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+
+  if (player.x !== oldX || player.y !== oldY) {
+    player.dashTimer = 0;
+  }
 }
 
 function unlockAchievement(id) {
   if (save.achievements[id]) return;
+
   save.achievements[id] = true;
   save.coins += 5;
   saveGame();
+
   floatingText(canvas.width / 2, canvas.height / 2 - 115, "ACHIEVEMENT: " + achievementList[id] + " (+5)", "#ffde59", 20);
   playSound(900, 0.18, "triangle", 0.07);
 }
 
+function unlockCharacter(id, achievementId) {
+  if (!characterData[id]) return;
+
+  if (save.ownedCharacters.indexOf(id) === -1) {
+    save.ownedCharacters.push(id);
+    saveGame();
+    floatingText(canvas.width / 2, canvas.height / 2 - 80, "CHARACTER UNLOCKED: " + characterData[id].name, characterData[id].color, 24);
+  }
+
+  if (achievementId) unlockAchievement(achievementId);
+}
+
+function countBosses() {
+  return enemies.filter(e => e.boss).length;
+}
+
 // ==========================
-// CORRUPTED / VOID TRAITS
+// TRAITS
 // ==========================
 function getCorruptionLevel() {
   if (!save.corruptedMode) return 0;
@@ -405,9 +492,11 @@ function applyEnemyTraits(enemy) {
 
   if (corruption > 0) {
     enemy.corrupted = true;
+
     const hpMult = 1 + corruption * 0.18;
     const speedMult = 1 + corruption * 0.12;
     const damageMult = 1 + corruption * 0.12;
+
     enemy.hp *= hpMult;
     enemy.maxHp *= hpMult;
     enemy.speed *= speedMult;
@@ -428,34 +517,6 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   keys[k] = true;
   unlockAudio();
-  if (state === "paused") {
-  if (k === "p" || k === "r" || e.key === "Escape") {
-    state = "playing";
-    resetControls();
-    return;
-  }
-if ((k === "1" || e.code === "Digit1" || e.code === "Numpad1") && state === "playing") {
-  useCharacterAbility();
-  return;
-}
-  if (k === "m") {
-    state = "menu";
-    resetControls();
-    return;
-  }
-
-  return;
-}
-
-if (state === "playing" && (k === "p" || e.key === "Escape")) {
-  if ((k === "1" || e.key === "1" || e.code === "Digit1" || e.code === "Numpad1") && state === "playing") {
-  useCharacterAbility();
-  return;
-}
-  state = "paused";
-  resetControls();
-  return;
-}
 
   if (e.key === "F1") {
     e.preventDefault();
@@ -463,12 +524,39 @@ if (state === "playing" && (k === "p" || e.key === "Escape")) {
     return;
   }
 
-  if (k === "q") {
+  if (state === "paused") {
+    if (k === "p" || k === "r" || e.key === "Escape") {
+      state = "playing";
+      resetControls();
+      return;
+    }
+
+    if (k === "m") {
+      panicResetToMenu(false);
+      return;
+    }
+
+    return;
+  }
+
+  if (state === "playing" && (k === "p" || e.key === "Escape")) {
+    state = "paused";
+    resetControls();
+    return;
+  }
+
+  if (state === "playing" && (k === "1" || k === "f" || e.key === "1" || e.code === "Digit1" || e.code === "Numpad1")) {
+    e.preventDefault();
+    useCharacterAbility();
+    return;
+  }
+
+  if (k === "q" && state === "playing") {
     player.weaponIndex = (player.weaponIndex - 1 + player.weapons.length) % player.weapons.length;
     playSound(420, 0.05, "square", 0.04);
   }
 
-  if (k === "e") {
+  if (k === "e" && state === "playing") {
     player.weaponIndex = (player.weaponIndex + 1) % player.weapons.length;
     playSound(520, 0.05, "square", 0.04);
   }
@@ -488,11 +576,11 @@ if (state === "playing" && (k === "p" || e.key === "Escape")) {
     resetControls();
   }
 
-
-
   if ((state === "menu" || state === "dead") && e.key === "Enter") startGame();
 
-  if (state === "cutscene" && e.key === "Enter" && cutscene) cutscene.timer = 999;
+  if (state === "cutscene" && e.key === "Enter" && cutscene) {
+    cutscene.timer = 999;
+  }
 });
 
 addEventListener("keyup", e => {
@@ -509,10 +597,33 @@ canvas.addEventListener("mousedown", () => {
   unlockAudio();
 });
 
-canvas.addEventListener("mouseup", () => mouse.down = false);
+canvas.addEventListener("mouseup", () => {
+  mouse.down = false;
+});
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  unlockAudio();
+  mouse.down = true;
+  const t = e.touches[0];
+  mouse.x = t.clientX;
+  mouse.y = t.clientY;
+});
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  mouse.x = t.clientX;
+  mouse.y = t.clientY;
+});
+
+canvas.addEventListener("touchend", e => {
+  e.preventDefault();
+  mouse.down = false;
+});
 
 // ==========================
-// SECRET DEV CONSOLE
+// DEV CONSOLE
 // ==========================
 function openDevConsole() {
   const pw = prompt("...");
@@ -526,13 +637,14 @@ function openDevConsole() {
     "wave50\n" +
     "coins100\n" +
     "unlockall\n" +
-"god\n" +
-"panic\n" +
-"reset"
+    "god\n" +
+    "panic\n" +
+    "reset"
   );
 
   resetControls();
   if (!cmd) return;
+
   cmd = cmd.toLowerCase();
 
   if (cmd === "wave25") {
@@ -554,11 +666,21 @@ function openDevConsole() {
     save.chaosUnlocked = true;
     save.corruptedUnlocked = true;
     saveGame();
-    alert("Unlocked.");
-} else if (cmd === "god") {
-  godMode = !godMode;
-  alert("God mode: " + godMode);
-} else if (cmd === "panic") {
+    alert("Unlocked all characters and modes.");
+  } else if (cmd === "god") {
+    godMode = !godMode;
+    alert("God mode: " + godMode);
+  } else if (cmd === "panic") {
+    panicResetToMenu(true);
+  } else if (cmd === "reset") {
+    if (confirm("Reset full save?")) {
+      localStorage.removeItem(SAVE_KEY);
+      location.reload();
+    }
+  }
+}
+
+function panicResetToMenu(showAlert) {
   godMode = false;
   state = "menu";
   wave = 1;
@@ -589,23 +711,20 @@ function openDevConsole() {
   player.rageTimer = 0;
 
   resetControls();
-  alert("Panic reset complete.");
-} else if (cmd === "reset") {
-    if (confirm("Reset save?")) {
-      localStorage.removeItem(SAVE_KEY);
-      location.reload();
-    }
-  }
+
+  if (showAlert) alert("Panic reset complete.");
 }
 
 // ==========================
-// MENUS / SHOP
+// MENU / SHOP
 // ==========================
 function showAchievements() {
   let msg = "ACHIEVEMENTS\n\n";
+
   for (const id in achievementList) {
     msg += (save.achievements[id] ? "✅ " : "⬜ ") + achievementList[id] + "\n";
   }
+
   msg += "\nAchievements give +5 permanent coins.";
   alert(msg);
   resetControls();
@@ -613,6 +732,7 @@ function showAchievements() {
 
 function openMainMenuShop() {
   let shopping = true;
+
   while (shopping) {
     let msg =
       "PERMANENT UPGRADE SHOP\n\n" +
@@ -623,6 +743,7 @@ function openMainMenuShop() {
       "4. Speed " + save.upgrades.speed + "/" + UPGRADE_CAPS.speed + " — Cost: " + save.costs.speed + "\n" +
       "5. Leave Shop\n\n" +
       "All permanent upgrades cap at 4.";
+
     const choice = prompt(msg);
     resetControls();
 
@@ -643,6 +764,7 @@ function buyPermanentUpgrade(type) {
   }
 
   const cost = save.costs[type];
+
   if (save.coins < cost) {
     alert("Not enough coins. You need " + cost + ".");
     resetControls();
@@ -656,12 +778,14 @@ function buyPermanentUpgrade(type) {
 
   unlockAchievement("firstShop");
   if (save.upgrades.speed >= 3) unlockAchievement("speedster");
+
   alert(type + " upgraded!");
   resetControls();
 }
 
 function openCharacterShop() {
   const ids = Object.keys(characterData);
+
   let msg = "CHARACTER SHOP\n\n";
   msg += "Coins: " + save.coins + "\n";
   msg += "Selected: " + characterData[save.selectedCharacter].name + "\n\n";
@@ -670,12 +794,14 @@ function openCharacterShop() {
     const id = ids[i];
     const c = characterData[id];
     const owned = save.ownedCharacters.indexOf(id) !== -1;
+
     let status = owned ? "OWNED" : c.cost + " coins";
-    if (id === "VOID" && !owned) status = "Unlock: beat wave 25";
-    if (id === "OVERLORD" && !owned) status = "Unlock: beat wave 50";
+    if (!owned && c.cost === 0 && c.lockedText) status = c.lockedText;
 
     msg += (i + 1) + ". " + c.name + " | " + status +
-      " | HP " + c.maxHp + " | SPD " + c.speed + " | DMG " + c.damage +
+      " | HP " + c.maxHp +
+      " | SPD " + c.speed +
+      " | DMG " + c.damage +
       " | Start: " + c.startWeapon + "\n";
   }
 
@@ -685,6 +811,7 @@ function openCharacterShop() {
   resetControls();
 
   if (choice === null) return;
+
   const index = Number(choice) - 1;
   if (index < 0 || index >= ids.length || Number.isNaN(index)) return;
 
@@ -700,14 +827,8 @@ function openCharacterShop() {
     return;
   }
 
-  if (id === "VOID") {
-    alert("Void unlocks when you defeat wave 25 Ravager.");
-    resetControls();
-    return;
-  }
-
-  if (id === "OVERLORD") {
-    alert("Overlord unlocks when you defeat wave 50 Worldbreaker.");
+  if (c.cost === 0 && c.lockedText) {
+    alert(c.lockedText);
     resetControls();
     return;
   }
@@ -722,13 +843,15 @@ function openCharacterShop() {
   save.ownedCharacters.push(id);
   save.selectedCharacter = id;
   saveGame();
+
   unlockAchievement("firstCharacter");
+
   alert(c.name + " bought and selected!");
   resetControls();
 }
 
 // ==========================
-// START / CUTSCENES
+// START / CUTSCENE
 // ==========================
 function startGame() {
   state = "playing";
@@ -746,6 +869,9 @@ function startGame() {
   wave25Stage = 0;
   finalStarted = false;
   finalDownTimer = 0;
+  godMode = false;
+  runWasCorrupted = save.corruptedMode;
+
   resetControls();
 
   const char = characterData[save.selectedCharacter] || characterData.CORE;
@@ -762,6 +888,11 @@ function startGame() {
   player.bulletSpeed = 760;
   player.dashCooldown = 3.3;
   player.lastDash = -99;
+  player.dashTimer = 0;
+  player.dashDuration = 0.14;
+  player.dashDistance = 190;
+  player.dashDirX = 0;
+  player.dashDirY = 0;
   player.invincible = 0;
   player.fireRateBonus = char.fireRateBonus + save.upgrades.fireRate * 0.007;
   player.pelletBonus = 0;
@@ -779,11 +910,7 @@ function startGame() {
   player.orbRunner = false;
   player.beamResist = false;
   player.killsSinceHeal = 0;
-player.dashTimer = 0;
-player.dashDuration = 0.14;
-player.dashDistance = 190;
-player.dashDirX = 0;
-player.dashDirY = 0;
+
   spawnWave();
   playSound(260, 0.12, "sawtooth", 0.06);
 }
@@ -796,7 +923,9 @@ function startCutscene(lines, onFinish) {
 
 function updateCutscene(dt) {
   if (!cutscene) return;
+
   cutscene.timer += dt;
+
   const current = cutscene.lines[cutscene.index];
   const duration = current.duration || 2.2;
 
@@ -823,6 +952,7 @@ function startWave25Intro() {
     spawnBoss("RAVAGER_1", false, false);
     currentBossName = bossNames.RAVAGER_1;
     floatingText(canvas.width / 2, 90, "RAVAGER: DORMANT FORM", "#ffde59", 30);
+    bossSfx("ravager");
   });
 }
 
@@ -837,6 +967,7 @@ function startRavagerAwakening() {
     currentBossName = bossNames.RAVAGER_2;
     floatingText(canvas.width / 2, 90, "RAVAGER: AWAKENED FORM", "#ff2f88", 34);
     screenShake = 15;
+    bossSfx("ravager");
   });
 }
 
@@ -855,16 +986,17 @@ function startWave50Intro() {
     finalStarted = true;
     floatingText(canvas.width / 2, 90, "FINAL BOSS", "#ff2f88", 40);
     screenShake = 18;
+    bossSfx("worldbreaker");
   });
 }
-function startFinalEndingCutscene() {
+  function startFinalEndingCutscene() {
   bullets = [];
   hazards = [];
   orbs = [];
   particles = [];
 
-  for (let i = 0; i < 160; i++) {
-    burst(canvas.width / 2, canvas.height / 2 - 60, i % 2 ? "#ff2f88" : "#ffde59", 1, 700);
+  for (let i = 0; i < 180; i++) {
+    burst(canvas.width / 2, canvas.height / 2 - 60, i % 2 ? "#ff2f88" : "#ffde59", 1, 720);
   }
 
   startCutscene([
@@ -879,24 +1011,30 @@ function startFinalEndingCutscene() {
     save.chaosUnlocked = true;
     save.corruptedUnlocked = true;
 
-    if (save.ownedCharacters.indexOf("OVERLORD") === -1) {
-      save.ownedCharacters.push("OVERLORD");
+    unlockCharacter("OVERLORD", "overlordUnlocked");
+
+    if (runWasCorrupted) {
+      unlockCharacter("APEX", "apexUnlocked");
     }
 
-    save.coins += 100;
+    if (save.selectedCharacter === "TANK") {
+      unlockCharacter("TITAN", "titanUnlocked");
+    }
+
+    save.coins += runWasCorrupted ? 175 : 100;
     saveGame();
 
     unlockAchievement("finalBoss");
     unlockAchievement("chaos");
     unlockAchievement("corrupted");
-    unlockAchievement("overlordUnlocked");
 
     alert(
       "FINAL BOSS DEFEATED!\n\n" +
       "Chaos Mode unlocked!\n" +
       "Corrupted Mode unlocked!\n" +
-      "+100 permanent coins!\n" +
-      "Overlord unlocked!"
+      "+100 coins!\n" +
+      "Overlord unlocked!" +
+      (runWasCorrupted ? "\n\nAPEX UNLOCKED for beating Corrupted Worldbreaker!" : "")
     );
 
     resetControls();
@@ -923,6 +1061,16 @@ function applyMilestones() {
   }
 }
 
+function checkCharacterUnlockProgress() {
+  if (save.selectedCharacter === "GHOST" && wave >= 40) {
+    unlockCharacter("PHANTOM", "phantomUnlocked");
+  }
+
+  if (wave >= 60 && save.chaosUnlocked) {
+    unlockCharacter("ECLIPSE", "eclipseUnlocked");
+  }
+}
+
 function spawnWave() {
   enemies = [];
   bullets = [];
@@ -934,6 +1082,7 @@ function spawnWave() {
     saveGame();
   }
 
+  checkCharacterUnlockProgress();
   applyMilestones();
 
   if (wave === 25 && !save.milestones.wave25) {
@@ -996,6 +1145,7 @@ function startChaosWave() {
   }
 
   const count = 4 + Math.floor(wave / 7);
+
   for (let i = 0; i < count; i++) {
     spawnEnemy(i % 3 === 0 ? "shooter" : i % 2 === 0 ? "fast" : "normal");
   }
@@ -1008,7 +1158,7 @@ function startBossWarning(type) {
   currentBossName = bossNames[type] || "Boss";
 
   floatingText(canvas.width / 2, canvas.height / 2, currentBossName.toUpperCase(), "#ff3b93", 40);
-  playSound(80, 0.35, "sawtooth", 0.08);
+  bossSfx("boss");
   screenShake = 9;
 }
 
@@ -1026,7 +1176,7 @@ function updateBossWarning(dt) {
     state = "playing";
     spawnBoss(pendingBossType || "CHARGER", false, false);
     floatingText(canvas.width / 2, 90, currentBossName, "#ff3b93", 34);
-    playSound(90, 0.4, "sawtooth", 0.09);
+    bossSfx("boss");
   }
 
   screenShake *= 0.9;
@@ -1105,11 +1255,10 @@ function spawnEnemy(type) {
 }
 
 function spawnBoss(type, chaos, small) {
-    const bossCount = enemies.filter(e => e.boss).length;
-
-  if (bossCount >= 4 && type !== "FINAL") {
+  if (countBosses() >= 4 && type !== "FINAL") {
     return;
   }
+
   const p = randomEdgePosition();
 
   let hp = 65 + wave * 17;
@@ -1182,7 +1331,7 @@ function spawnBoss(type, chaos, small) {
 
   if (type === "RAVAGER_1") {
     hp = 520 * 1.5;
-    speed = 35;
+    speed = 0;
     damage = 18;
     r = 70;
     color = "#5b6478";
@@ -1259,8 +1408,8 @@ function spawnBoss(type, chaos, small) {
   }
 
   const boss = {
-    x: type === "FINAL" ? canvas.width / 2 : p.x,
-    y: type === "FINAL" ? canvas.height * 0.22 : p.y,
+    x: type === "FINAL" || type === "RAVAGER_1" ? canvas.width / 2 : p.x,
+    y: type === "FINAL" ? canvas.height * 0.22 : type === "RAVAGER_1" ? canvas.height / 2 : p.y,
     r,
     hp,
     maxHp: hp,
@@ -1328,7 +1477,7 @@ function shouldCrit(weaponName) {
 
 function shoot(now) {
   const weaponName = getCurrentWeapon();
-  const data = weaponData[weaponName];
+  const data = weaponData[weaponName] || weaponData.PISTOL;
 
   let cooldown = Math.max(0.035, data.cooldown - player.fireRateBonus);
 
@@ -1346,10 +1495,10 @@ function shoot(now) {
   const crit = shouldCrit(weaponName) ? 1.75 : 1;
 
   if (weaponName === "PISTOL") {
-    createPlayerBullet(angle, baseDmg * damageBoost * crit, data.color, 5, 1.2, false, weaponName);
+    createPlayerBullet(angle, (baseDmg * damageBoost * crit) * 0.75, data.color, 5, 1.2, false, weaponName);
 
     if (evo) {
-      createPlayerBullet(angle + 0.08, baseDmg * 0.8 * damageBoost, data.color, 4, 1.1, false, weaponName);
+      createPlayerBullet(angle + 0.08, (baseDmg * 0.8 * damageBoost) * 0.75, data.color, 4, 1.1, false, weaponName);
     }
 
     playSound(data.sound, 0.04, "square", 0.035);
@@ -1410,11 +1559,11 @@ function shoot(now) {
     screenShake = Math.max(screenShake, 6);
   }
 
-if (weaponName === "RAILGUN") {
-    createPlayerBullet(angle, baseDmg * (evo ? 4.1 : 3.2) * damageBoost * crit, data.color, 6, 1.6, true, weaponName);
+  if (weaponName === "RAILGUN") {
+    createPlayerBullet(angle, baseDmg * (evo ? 4.1 : 3.2) * damageBoost * crit, data.color, 6, evo ? 0.95 : 0.75, true, weaponName);
     bullets[bullets.length - 1].vx *= 1.35;
     bullets[bullets.length - 1].vy *= 1.35;
-    bullets[bullets.length - 1].pierce = evo ? 12 : 8;
+    bullets[bullets.length - 1].pierce = evo ? 8 : 5;
     playSound(data.sound, 0.1, "triangle", 0.06);
     screenShake = Math.max(screenShake, 5);
   }
@@ -1439,6 +1588,18 @@ if (weaponName === "RAILGUN") {
     bullets[bullets.length - 1].chain = evo;
     bullets[bullets.length - 1].chainCount = evo ? 3 : 0;
     playSound(data.sound, 0.04, "triangle", 0.028);
+  }
+
+  if (weaponName === "NOVABURST") {
+    const shots = evo ? 7 : 5;
+
+    for (let i = 0; i < shots; i++) {
+      const spread = (i - Math.floor(shots / 2)) * 0.09;
+      createPlayerBullet(angle + spread, baseDmg * 1.35 * damageBoost * crit, data.color, 6, 1.2, true, weaponName);
+      bullets[bullets.length - 1].pierce = evo ? 4 : 2;
+    }
+
+    playSound(data.sound, 0.08, "triangle", 0.05);
   }
 }
 
@@ -1494,7 +1655,13 @@ function useCharacterAbility() {
     player.abilityCooldown = 20;
   }
 
-  const charId = save.selectedCharacter;
+  let charId = String(save.selectedCharacter || "CORE").toUpperCase();
+
+  if (!characterData[charId]) {
+    charId = "CORE";
+    save.selectedCharacter = "CORE";
+    saveGame();
+  }
 
   if (now - player.lastAbility < player.abilityCooldown) {
     floatingText(player.x, player.y - 45, "ABILITY NOT READY", "#ffffff", 16);
@@ -1502,79 +1669,115 @@ function useCharacterAbility() {
   }
 
   player.lastAbility = now;
-
-  player.lastAbility = now;
+  bossSfx("ability");
 
   if (charId === "CORE") {
     player.hp = Math.min(player.maxHp, player.hp + 25 + player.maxHp * 0.05);
     floatingText(player.x, player.y - 45, "CORE HEAL", "#7dfcff", 18);
-    playSound(700, 0.12, "triangle", 0.06);
   }
 
   if (charId === "BLAZE") {
-    burst(player.x, player.y, "#ff6b3d", 45, 420);
-
-    for (const e of enemies) {
-      if (distance(player, e) < 150 + e.r) {
-        e.hp -= player.damage * 5;
-        e.hit = 0.15;
-      }
-    }
-
-    floatingText(player.x, player.y - 45, "BLAZE NOVA", "#ff6b3d", 18);
-    screenShake = Math.max(screenShake, 12);
-    playSound(120, 0.22, "sawtooth", 0.08);
+    abilityBlast(165, player.damage * 5.5, "#ff6b3d", true);
+    floatingText(player.x, player.y - 45, "FIRE NOVA", "#ff6b3d", 18);
   }
 
   if (charId === "VOLT") {
-    player.slowTimeTimer = 4;
+    player.slowTimeTimer = 4.5;
     floatingText(player.x, player.y - 45, "TIME SLOW", "#7dfcff", 18);
-    playSound(950, 0.18, "sine", 0.06);
   }
 
   if (charId === "TANK") {
-    player.shieldTimer = 5;
+    player.shieldTimer = 5.5;
     floatingText(player.x, player.y - 45, "SHIELD ON", "#6cff7a", 18);
-    playSound(300, 0.18, "triangle", 0.06);
   }
 
   if (charId === "GHOST") {
-    player.ghostTimer = 3;
-    player.invincible = 3;
+    player.ghostTimer = 3.2;
+    player.invincible = 3.2;
     floatingText(player.x, player.y - 45, "GHOST MODE", "#b28cff", 18);
-    playSound(500, 0.18, "sine", 0.06);
   }
 
   if (charId === "NOVA") {
     player.overchargeTimer = 5;
     floatingText(player.x, player.y - 45, "OVERCHARGE", "#ffffff", 18);
-    playSound(1100, 0.18, "triangle", 0.07);
   }
 
   if (charId === "VOID") {
-    burst(player.x, player.y, "#b28cff", 55, 300);
-
-    for (const e of enemies) {
-      if (distance(player, e) < 210 + e.r) {
-        e.hp -= player.damage * 4.2;
-        e.x += (player.x - e.x) * 0.12;
-        e.y += (player.y - e.y) * 0.12;
-        e.hit = 0.15;
-      }
-    }
-
-    floatingText(player.x, player.y - 45, "VOID PULL", "#b28cff", 18);
-    screenShake = Math.max(screenShake, 10);
-    playSound(260, 0.24, "sawtooth", 0.07);
+    abilityBlast(220, player.damage * 4.2, "#b28cff", false);
+    pushEnemiesAway(260, 145);
+    floatingText(player.x, player.y - 45, "VOID PUSH", "#b28cff", 18);
   }
 
   if (charId === "OVERLORD") {
     player.rageTimer = 6;
     player.shieldTimer = 6;
+    abilityBlast(190, player.damage * 4.5, "#ff2f88", true);
     floatingText(player.x, player.y - 45, "BOSS RAGE", "#ff2f88", 18);
-    screenShake = Math.max(screenShake, 10);
-    playSound(80, 0.3, "sawtooth", 0.09);
   }
+
+  if (charId === "PHANTOM") {
+    player.ghostTimer = 2.2;
+    player.invincible = 2.2;
+    dashTeleportTowardAim(240);
+    abilityBlast(130, player.damage * 3.5, "#dac7ff", false);
+    floatingText(player.x, player.y - 45, "PHASE BLINK", "#dac7ff", 18);
+  }
+
+  if (charId === "TITAN") {
+    player.shieldTimer = 7;
+    abilityBlast(230, player.damage * 5, "#8cff9f", true);
+    pushEnemiesAway(260, 220);
+    floatingText(player.x, player.y - 45, "FORTRESS PULSE", "#8cff9f", 18);
+  }
+
+  if (charId === "ECLIPSE") {
+    player.overchargeTimer = 4;
+    abilityBlast(280, player.damage * 6, "#ffde59", true);
+    floatingText(player.x, player.y - 45, "SOLAR COLLAPSE", "#ffde59", 18);
+  }
+
+  if (charId === "APEX") {
+    player.shieldTimer = 5;
+    player.overchargeTimer = 5;
+    player.rageTimer = 5;
+    abilityBlast(360, player.damage * 9, "#ffffff", true);
+    pushEnemiesAway(390, 260);
+    floatingText(player.x, player.y - 45, "APEX ANNIHILATION", "#ffffff", 20);
+  }
+
+  screenShake = Math.max(screenShake, 12);
+}
+
+function abilityBlast(radius, damage, color, bossDamage) {
+  burst(player.x, player.y, color, 65, 420);
+
+  for (const e of enemies) {
+    if (distance(player, e) < radius + e.r) {
+      e.hp -= e.boss && !bossDamage ? damage * 0.45 : damage;
+      e.hit = 0.2;
+    }
+  }
+}
+
+function pushEnemiesAway(radius, force) {
+  for (const e of enemies) {
+    const d = distance(player, e);
+
+    if (d < radius + e.r && d > 0) {
+      const dx = (e.x - player.x) / d;
+      const dy = (e.y - player.y) / d;
+
+      e.x += dx * force;
+      e.y += dy * force;
+    }
+  }
+}
+
+function dashTeleportTowardAim(dist) {
+  const aim = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+  player.x += Math.cos(aim) * dist;
+  player.y += Math.sin(aim) * dist;
+  lockPlayerInBounds();
 }
 
 // ==========================
@@ -1598,55 +1801,47 @@ function update(dt, now) {
   if (keys["d"] || keys["arrowright"]) mx++;
 
   const len = Math.hypot(mx, my) || 1;
-let speed = player.speed;
+  let speed = player.speed;
 
-if (player.orbRunner && orbs.length > 0) speed *= 1.25;
+  if (player.orbRunner && orbs.length > 0) speed *= 1.25;
 
-if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
-  player.lastDash = now;
-  player.invincible = 0.3;
-  player.dashTimer = player.dashDuration;
+  if ((keys["shift"] || keys["x"]) && now - player.lastDash > player.dashCooldown) {
+    player.lastDash = now;
+    player.invincible = 0.3;
+    player.dashTimer = player.dashDuration;
 
-  player.dashDirX = mx / len;
-  player.dashDirY = my / len;
+    player.dashDirX = mx / len;
+    player.dashDirY = my / len;
 
-  if (mx === 0 && my === 0) {
-    const aim = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    player.dashDirX = Math.cos(aim);
-    player.dashDirY = Math.sin(aim);
+    if (mx === 0 && my === 0) {
+      const aim = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      player.dashDirX = Math.cos(aim);
+      player.dashDirY = Math.sin(aim);
+    }
+
+    burst(player.x, player.y, "#6aa8ff", 30, 360);
+    playSound(160, 0.08, "triangle", 0.06);
+    screenShake = Math.max(screenShake, 5);
   }
 
-  burst(player.x, player.y, "#6aa8ff", 30, 360);
-  playSound(160, 0.08, "triangle", 0.06);
-  screenShake = Math.max(screenShake, 5);
-}
+  if (player.dashTimer > 0) {
+    const dashStep = player.dashDistance * (dt / player.dashDuration);
 
-if (player.dashTimer > 0) {
-  const dashStep = player.dashDistance * (dt / player.dashDuration);
-  player.x += player.dashDirX * dashStep;
-  player.y += player.dashDirY * dashStep;
-  player.dashTimer -= dt;
-} else {
-  player.x += (mx / len) * speed * dt;
-  player.y += (my / len) * speed * dt;
-}
+    player.x += player.dashDirX * dashStep;
+    player.y += player.dashDirY * dashStep;
+    player.dashTimer -= dt;
+  } else {
+    player.x += (mx / len) * speed * dt;
+    player.y += (my / len) * speed * dt;
+  }
 
-// ABSOLUTE WALL LOCK — walking AND dashing cannot leave the screen
-player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
-player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
-
-if (
-  player.x <= player.r ||
-  player.x >= canvas.width - player.r ||
-  player.y <= player.r ||
-  player.y >= canvas.height - player.r
-) {
-  player.dashTimer = 0;
-}
-
-player.invincible -= dt;
   lockPlayerInBounds();
+
+  player.invincible -= dt;
+
   if (mouse.down || keys[" "]) shoot(now);
+
+  lockPlayerInBounds();
 
   updateBullets(dt);
   updateEnemies(dt);
@@ -1686,18 +1881,14 @@ function handleWaveClear() {
     save.milestones.wave25 = true;
     save.coins += 15;
 
-    if (save.ownedCharacters.indexOf("VOID") === -1) {
-      save.ownedCharacters.push("VOID");
-    }
-
+    unlockCharacter("VOID", "voidUnlocked");
     saveGame();
 
     unlockAchievement("wave25");
-    unlockAchievement("voidUnlocked");
 
     alert("WAVE 25 CLEARED!\n\n+15 coins!\nSecret character unlocked: VOID!");
-
     resetControls();
+
     bossClearReward(false);
     return;
   }
@@ -1791,8 +1982,7 @@ function updateEnemies(dt) {
     }
   }
 }
-
-// ==========================
+  // ==========================
 // BOSS AI
 // ==========================
 function updateBoss(e, dt, angle, mult) {
@@ -1807,7 +1997,6 @@ function updateBoss(e, dt, angle, mult) {
   if (isRavagerEcho(e.bossType)) return updateRavagerEcho(e, dt, angle, mult);
 
   let bossSpeed = e.speed * 1.04;
-
   if (e.phase === 2) bossSpeed *= 1.12;
 
   if (e.bossType === "CHARGER") {
@@ -1855,7 +2044,7 @@ function updateBoss(e, dt, angle, mult) {
     if (e.shootTimer <= 0) {
       e.shootTimer = e.phase === 2 ? 0.9 : 1.4;
       createLineHazard(e.x, e.y, angle, "#ffffff", 0.75, 0.18, 28, 20);
-      playSound(600, 0.08, "triangle", 0.05);
+      bossSfx("beam");
     }
   } else {
     if (e.shootTimer <= 0) {
@@ -1940,6 +2129,10 @@ function updateRavagerDormant(e, dt, angle, mult) {
   e.shootTimer -= dt * mult;
   e.summonTimer -= dt * mult;
 
+  // Dormant Ravager stays centered so players can understand the first form.
+  e.x += (canvas.width / 2 - e.x) * 0.08;
+  e.y += (canvas.height / 2 - e.y) * 0.08;
+
   if (e.shootTimer <= 0) {
     e.shootTimer = 1.45;
 
@@ -1953,6 +2146,8 @@ function updateRavagerDormant(e, dt, angle, mult) {
     e.specialTimer = 3.1;
     createQuadrantBeam(randomQuadrant(), "#ff9f43", 0.85, 18);
     floatingText(canvas.width / 2, 120, "FALLING BEAM", "#ff9f43", 24);
+    bossSfx("beam");
+    screenShake = Math.max(screenShake, 6);
   }
 
   if (e.summonTimer <= 0) {
@@ -1962,6 +2157,7 @@ function updateRavagerDormant(e, dt, angle, mult) {
     spawnEnemy("shooter");
   }
 }
+
 function updateRavagerAwakened(e, dt, angle, mult) {
   e.spin += dt * 2.2;
   e.shootTimer -= dt * mult;
@@ -1985,6 +2181,7 @@ function updateRavagerAwakened(e, dt, angle, mult) {
   if (e.specialTimer <= 0) {
     e.specialTimer = e.phase === 2 ? 2.35 : 2.8;
     createQuadrantBeam(randomQuadrant(), "#ff2f88", e.phase === 2 ? 0.62 : 0.75, 26);
+    bossSfx("beam");
     screenShake = Math.max(screenShake, 8);
   }
 
@@ -2021,6 +2218,7 @@ function updateRavagerEcho(e, dt, angle, mult) {
     e.specialTimer = e.phase === 2 ? 2.0 : 2.6;
     const q1 = randomQuadrant();
     createQuadrantBeam(q1, e.color, 0.58, 28);
+    bossSfx("beam");
 
     if (e.bossType === "RAVAGER_CROWNED" || e.phase === 2) {
       let q2 = randomQuadrant();
@@ -2079,17 +2277,20 @@ function updateFinalBoss(e, dt, angle, mult) {
 
   if (e.laneTimer <= 0) {
     e.laneTimer = e.phase === 3 ? 1.15 : e.phase === 2 ? 1.45 : 1.75;
-   createLaneStrike(e.phase === 3 ? 0.53 : e.phase === 2 ? 0.65 : 0.78, 50);
+    createLaneStrike(e.phase === 3 ? 0.53 : e.phase === 2 ? 0.65 : 0.78, 50);
+    bossSfx("final");
   }
 
   if (e.eyeTimer <= 0) {
     e.eyeTimer = e.phase === 3 ? 0.82 : e.phase === 2 ? 0.95 : 1.12;
     createLineHazard(e.x, e.y, angle, "#ffffff", e.phase === 3 ? 0.42 : 0.52, 0.16, 40, 34);
+    bossSfx("beam");
   }
 
   if (e.swordTimer <= 0) {
     e.swordTimer = e.phase === 3 ? 2.9 : 4.2;
     createSwordRain(e.phase === 3 ? 11 : 7, e.phase === 3 ? 0.45 : 0.65, 34);
+    bossSfx("final");
   }
 
   if (e.slashTimer <= 0) {
@@ -2104,11 +2305,12 @@ function updateFinalBoss(e, dt, angle, mult) {
 
   if (e.summonTimer <= 0) {
     e.summonTimer = e.phase === 3 ? 4.2 : 5.8;
-    spawnBoss("PAST_BOSS", true, true);
+
+    if (countBosses() < 4) spawnBoss("PAST_BOSS", true, true);
     spawnEnemy("shooter");
     spawnEnemy("tank");
 
-    if (e.phase >= 2) spawnBoss("PAST_BOSS", true, true);
+    if (e.phase >= 2 && countBosses() < 4) spawnBoss("PAST_BOSS", true, true);
 
     if (e.phase >= 3) {
       spawnEnemy("fast");
@@ -2406,7 +2608,7 @@ function handleCollisions() {
         let damage = b.damage;
 
         if (e.boss) {
-          if (b.weaponName === "RAILGUN") damage *= 1 / 3;
+          if (b.weaponName === "RAILGUN") damage *= 1 / 4;
           if (b.weaponName === "LASER") damage *= 1 / 5;
           if (b.weaponName === "SPARK") damage *= 1 / 5;
         }
@@ -2631,8 +2833,7 @@ function giveFreeBossUpgrade() {
   floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: " + reward, "#ffde59", 28);
   playSound(740, 0.16, "triangle", 0.07);
 }
-
-// ==========================
+  // ==========================
 // DRAWING
 // ==========================
 function draw() {
@@ -2691,6 +2892,7 @@ function drawBackground() {
   }
 
   ctx.globalAlpha = 1;
+
   ctx.strokeStyle = save.corruptedMode ? "rgba(255,60,255,0.08)" : "rgba(130,160,255,0.07)";
   ctx.lineWidth = 1;
 
@@ -2759,12 +2961,20 @@ function drawHazards() {
     }
 
     if (h.type === "line") {
+      const active = h.timer > h.warning;
+
       ctx.save();
       ctx.translate(h.x, h.y);
       ctx.rotate(h.angle);
-      ctx.globalAlpha = h.timer > h.warning ? 0.75 : 0.28;
+
+      ctx.globalAlpha = active ? 0.82 : 0.25;
       ctx.fillStyle = h.color;
       ctx.fillRect(0, -h.width / 2, canvas.width * 2, h.width);
+
+      ctx.globalAlpha = active ? 0.95 : 0.35;
+      ctx.fillStyle = active ? "#ffffff" : "#ff4f9f";
+      ctx.fillRect(0, -h.width / 8, canvas.width * 2, h.width / 4);
+
       ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -2806,6 +3016,7 @@ function drawOrbs() {
     ctx.shadowBlur = 25;
     ctx.shadowColor = o.color;
     ctx.fillStyle = o.color;
+
     ctx.beginPath();
     ctx.arc(o.x, o.y, o.r + Math.sin(performance.now() / 100) * 4, 0, Math.PI * 2);
     ctx.fill();
@@ -2825,9 +3036,11 @@ function drawParticles() {
     ctx.shadowBlur = 12;
     ctx.shadowColor = p.color;
     ctx.fillStyle = p.color;
+
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fill();
+
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
   }
@@ -2853,9 +3066,11 @@ function drawBullets() {
     ctx.shadowBlur = 14;
     ctx.shadowColor = b.color;
     ctx.fillStyle = b.color;
+
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
     ctx.fill();
+
     ctx.shadowBlur = 0;
   }
 }
@@ -2873,6 +3088,7 @@ function drawEnemies() {
     else drawEnemyShape(e);
 
     ctx.shadowBlur = 0;
+
     ctx.fillStyle = "#101421";
     ctx.fillRect(-e.r, -e.r - 14, e.r * 2, 5);
 
@@ -2957,6 +3173,7 @@ function drawBossShape(e) {
   if (e.bossType === "TANK_BOSS") {
     roundRect(-e.r, -e.r, e.r * 2, e.r * 2, 8);
     ctx.fill();
+
     ctx.fillStyle = "#220014";
     ctx.fillRect(-e.r * 0.6, -e.r * 0.6, e.r * 1.2, e.r * 1.2);
     return;
@@ -2966,12 +3183,15 @@ function drawBossShape(e) {
     ctx.beginPath();
     ctx.arc(0, 0, e.r, 0, Math.PI * 2);
     ctx.fill();
+
     ctx.fillStyle = "#111827";
     ctx.fillRect(0, -8, e.r * 1.5, 16);
+
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(0, 0, e.r * 0.35, 0, Math.PI * 2);
     ctx.fill();
+
     return;
   }
 
@@ -3010,9 +3230,11 @@ function drawRavagerCorpse(x, y, scale) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
+
   ctx.fillStyle = "#5b6478";
   ctx.shadowBlur = 20;
   ctx.shadowColor = "#5b6478";
+
   ctx.beginPath();
   ctx.moveTo(-90, 20);
   ctx.lineTo(-40, -45);
@@ -3022,8 +3244,10 @@ function drawRavagerCorpse(x, y, scale) {
   ctx.lineTo(-70, 50);
   ctx.closePath();
   ctx.fill();
+
   ctx.fillStyle = "#1d2233";
   ctx.fillRect(-45, -10, 90, 20);
+
   ctx.shadowBlur = 0;
   ctx.restore();
 }
@@ -3032,6 +3256,7 @@ function drawRavagerAwakenedShape(x, y, r, color) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(performance.now() / 700);
+
   ctx.fillStyle = color;
   ctx.beginPath();
 
@@ -3116,6 +3341,7 @@ function drawFinalFlowerBoss(x, y, scale, color) {
 
   for (let i = 0; i < 12; i++) {
     const a = t + (i * Math.PI * 2) / 12;
+
     ctx.save();
     ctx.rotate(a);
     ctx.beginPath();
@@ -3150,7 +3376,7 @@ function drawFinalFlowerBoss(x, y, scale, color) {
 function drawPlayer() {
   const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
   const weaponName = getCurrentWeapon();
-  const weaponColor = weaponData[weaponName].color;
+  const weaponColor = (weaponData[weaponName] || weaponData.PISTOL).color;
   const char = characterData[save.selectedCharacter] || characterData.CORE;
 
   ctx.save();
@@ -3213,7 +3439,7 @@ function drawUI() {
   const char = characterData[save.selectedCharacter] || characterData.CORE;
   const now = performance.now() / 1000;
   const abilityReady = now - player.lastAbility >= player.abilityCooldown;
-  const dashReady = Date.now() / 1000 - player.lastDash > player.dashCooldown;
+  const dashReady = now - player.lastDash > player.dashCooldown;
 
   ctx.textAlign = "left";
   ctx.font = "16px Arial";
@@ -3228,8 +3454,10 @@ function drawUI() {
 
   ctx.fillStyle = "#101421";
   ctx.fillRect(14, 150, 230, 16);
+
   ctx.fillStyle = "#57ff85";
   ctx.fillRect(14, 150, 230 * Math.max(0, player.hp / player.maxHp), 16);
+
   ctx.strokeStyle = "white";
   ctx.strokeRect(14, 150, 230, 16);
 
@@ -3237,7 +3465,7 @@ function drawUI() {
   ctx.fillText("Dash: " + (dashReady ? "READY" : "COOLDOWN"), 14, 188);
 
   ctx.fillStyle = abilityReady ? "#ffde59" : "#6b7280";
-  ctx.fillText("Ability [1]: " + (abilityReady ? "READY" : "COOLDOWN"), 14, 210);
+  ctx.fillText("Ability [1/F]: " + (abilityReady ? "READY" : "COOLDOWN"), 14, 210);
 
   ctx.fillStyle = save.evolutionUnlocked ? "#ffde59" : "#6b7280";
   ctx.font = "13px Arial";
@@ -3263,7 +3491,9 @@ function drawBossHealthBar() {
   ctx.fillStyle = "#ffffff";
   ctx.shadowBlur = 10;
   ctx.shadowColor = boss.corrupted ? "#ff00ff" : "#ff3b93";
+
   ctx.fillText((boss.corrupted ? "CORRUPTED " : boss.voided ? "VOID " : "") + (bossNames[boss.bossType] || "BOSS"), canvas.width / 2, y - 5);
+
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = "#130716";
@@ -3310,16 +3540,19 @@ function drawBossWarningOverlay() {
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2 - 35);
   ctx.scale(pulse, pulse);
+
   ctx.textAlign = "center";
   ctx.shadowBlur = 25;
   ctx.shadowColor = "#ff3b93";
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 48px Arial";
   ctx.fillText(currentBossName.toUpperCase(), 0, 0);
+
   ctx.shadowBlur = 0;
   ctx.font = "20px Arial";
   ctx.fillStyle = "#ffd0e5";
   ctx.fillText("Get ready...", 0, 42);
+
   ctx.restore();
 }
 
@@ -3364,6 +3597,22 @@ function drawCutscene() {
   ctx.fillText("Press ENTER to skip line", canvas.width / 2, canvas.height - 60);
 }
 
+function burstVisual(x, y, color, amount) {
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = color;
+
+  for (let i = 0; i < amount; i++) {
+    const a = (i / amount) * Math.PI * 2;
+    const r = 70 + Math.sin(performance.now() / 120 + i) * 20;
+
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
 function drawMenu() {
   ctx.fillStyle = "rgba(0,0,0,0.72)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3377,24 +3626,24 @@ function drawMenu() {
   ctx.shadowColor = save.corruptedMode ? "#ff00ff" : "#7dfcff";
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 52px Arial";
-  ctx.fillText("NEON BOSS SHOOTER", canvas.width / 2, canvas.height / 2 - 230);
+  ctx.fillText("NEON BOSS SHOOTER", canvas.width / 2, canvas.height / 2 - 240);
 
   ctx.shadowBlur = 0;
   ctx.font = "20px Arial";
   ctx.fillStyle = "#cfe7ff";
-  ctx.fillText("Final Playtest Build • Ravager Story • Chaos • Corrupted Mode", canvas.width / 2, canvas.height / 2 - 180);
+  ctx.fillText("v1.2 Clean Rebuild • Ravager Story • Chaos • Corrupted Mode", canvas.width / 2, canvas.height / 2 - 190);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 24px Arial";
-  ctx.fillText("Press ENTER to start", canvas.width / 2, canvas.height / 2 - 115);
-  ctx.fillText("Press M for upgrade shop", canvas.width / 2, canvas.height / 2 - 80);
-  ctx.fillText("Press C for character shop", canvas.width / 2, canvas.height / 2 - 45);
-  ctx.fillText("Press A for achievements", canvas.width / 2, canvas.height / 2 - 10);
+  ctx.fillText("Press ENTER to start", canvas.width / 2, canvas.height / 2 - 125);
+  ctx.fillText("Press M for upgrade shop", canvas.width / 2, canvas.height / 2 - 90);
+  ctx.fillText("Press C for character shop", canvas.width / 2, canvas.height / 2 - 55);
+  ctx.fillText("Press A for achievements", canvas.width / 2, canvas.height / 2 - 20);
 
   ctx.font = "16px Arial";
   ctx.fillStyle = "#b9c8ff";
-  ctx.fillText("Selected: " + char.name + " — Starts with " + char.startWeapon, canvas.width / 2, canvas.height / 2 + 40);
-  ctx.fillText("Coins: " + save.coins + " | Best Wave: " + save.bestWave, canvas.width / 2, canvas.height / 2 + 70);
+  ctx.fillText("Selected: " + char.name + " — Starts with " + char.startWeapon, canvas.width / 2, canvas.height / 2 + 35);
+  ctx.fillText("Coins: " + save.coins + " | Best Wave: " + save.bestWave, canvas.width / 2, canvas.height / 2 + 65);
 
   ctx.fillText(
     "Damage " + save.upgrades.damage + "/" + UPGRADE_CAPS.damage +
@@ -3402,11 +3651,11 @@ function drawMenu() {
     " | Health " + save.upgrades.health + "/" + UPGRADE_CAPS.health +
     " | Speed " + save.upgrades.speed + "/" + UPGRADE_CAPS.speed,
     canvas.width / 2,
-    canvas.height / 2 + 100
+    canvas.height / 2 + 95
   );
 
-  ctx.fillText("Achievements: " + unlocked + " / " + total, canvas.width / 2, canvas.height / 2 + 128);
-  ctx.fillText("Wave 10: Evolutions • Wave 25: Void • Wave 50: Chaos + Overlord", canvas.width / 2, canvas.height / 2 + 156);
+  ctx.fillText("Achievements: " + unlocked + " / " + total, canvas.width / 2, canvas.height / 2 + 125);
+  ctx.fillText("Hard unlocks: Phantom • Titan • Eclipse • Apex", canvas.width / 2, canvas.height / 2 + 153);
 
   ctx.fillStyle = save.corruptedMode ? "#ff2f88" : "#6b7280";
   ctx.fillText(
@@ -3414,9 +3663,10 @@ function drawMenu() {
       ? "Press V: Corrupted Mode " + (save.corruptedMode ? "ON" : "OFF")
       : "Corrupted Mode: Locked until Worldbreaker is defeated",
     canvas.width / 2,
-    canvas.height / 2 + 184
+    canvas.height / 2 + 183
   );
 }
+
 function drawPauseMenu() {
   ctx.fillStyle = "rgba(0,0,0,0.72)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3438,6 +3688,7 @@ function drawPauseMenu() {
   ctx.fillStyle = "#6b7280";
   ctx.fillText("Current run progress will be lost if you return to the menu.", canvas.width / 2, canvas.height / 2 + 70);
 }
+
 function drawGameOver() {
   ctx.fillStyle = "rgba(0,0,0,0.78)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3486,4 +3737,3 @@ function loop(t) {
 requestAnimationFrame(loop);
 
 })();
-
