@@ -7,9 +7,9 @@
 (() => {
 "use strict";
 
-// ==========================
+// =========================
 // PAGE SETUP
-// ==========================
+// =========================
 document.body.innerHTML = "";
 document.body.style.margin = "0";
 document.body.style.overflow = "hidden";
