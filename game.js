@@ -448,6 +448,10 @@ if ((k === "1" || e.code === "Digit1" || e.code === "Numpad1") && state === "pla
 }
 
 if (state === "playing" && (k === "p" || e.key === "Escape")) {
+  if ((k === "1" || e.key === "1" || e.code === "Digit1" || e.code === "Numpad1") && state === "playing") {
+  useCharacterAbility();
+  return;
+}
   state = "paused";
   resetControls();
   return;
