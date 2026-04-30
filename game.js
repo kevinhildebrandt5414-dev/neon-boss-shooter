@@ -658,11 +658,9 @@ function openDevConsole() {
   spawnWave();
 } else if (cmd === "wave75") {
   startGame();
-  save.chaosUnlocked = true;
-  save.corruptedUnlocked = true;
-  saveGame();
   wave = 75;
   spawnWave();
+}
 } else if (cmd === "coins100") {
     save.coins += 100;
     saveGame();
@@ -1103,9 +1101,10 @@ function spawnWave() {
     return;
   }
 
-  if (wave > 50 || save.chaosUnlocked) {
-    startChaosWave();
-    return;
+if (wave > 50) {
+  startChaosWave();
+  return;
+}
   }
 
   if (wave % 4 === 0) {
