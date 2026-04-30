@@ -1105,7 +1105,7 @@ if (wave > 50) {
   startChaosWave();
   return;
 }
-  }
+  
 
   if (wave % 4 === 0) {
     const bossIndex = Math.floor(wave / 4 - 1) % bossCycle.length;
