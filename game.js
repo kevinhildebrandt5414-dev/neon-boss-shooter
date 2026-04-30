@@ -522,8 +522,9 @@ function openDevConsole() {
     "wave50\n" +
     "coins100\n" +
     "unlockall\n" +
-    "god\n" +
-    "reset"
+"god\n" +
+"panic\n" +
+"reset"
   );
 
   resetControls();
