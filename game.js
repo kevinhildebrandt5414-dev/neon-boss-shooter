@@ -632,14 +632,14 @@ function openDevConsole() {
   if (pw !== "Neondevshooterdoggoz") return;
 
   let cmd = prompt(
-    "Input:\n\n" +
-    "wave25\n" +
-    "wave50\n" +
-    "coins100\n" +
-    "unlockall\n" +
-    "god\n" +
-    "panic\n" +
-    "reset"
+   "wave25\n" +
+"wave50\n" +
+"wave75\n" +
+"coins100\n" +
+"unlockall\n" +
+"god\n" +
+"panic\n" +
+"reset"
   );
 
   resetControls();
@@ -652,11 +652,18 @@ function openDevConsole() {
     wave = 25;
     save.milestones.wave25 = false;
     spawnWave();
-  } else if (cmd === "wave50") {
-    startGame();
-    wave = 50;
-    spawnWave();
-  } else if (cmd === "coins100") {
+} else if (cmd === "wave50") {
+  startGame();
+  wave = 50;
+  spawnWave();
+} else if (cmd === "wave75") {
+  startGame();
+  save.chaosUnlocked = true;
+  save.corruptedUnlocked = true;
+  saveGame();
+  wave = 75;
+  spawnWave();
+} else if (cmd === "coins100") {
     save.coins += 100;
     saveGame();
     alert("+100 coins");
@@ -1127,8 +1134,37 @@ function spawnWave() {
 
   floatingText(canvas.width / 2, 90, "WAVE " + wave, "#7dfcff", 28);
 }
+function startWave75Troll() {
+  spawnBoss("RAVAGER_CROWNED", true, false);
+  spawnBoss("HYBRID", true, false);
+  spawnBoss("SNIPER", true, false);
 
+  for (let i = 0; i < 6; i++) spawnEnemy("shooter");
+  for (let i = 0; i < 8; i++) spawnEnemy("fast");
+  for (let i = 0; i < 4; i++) spawnEnemy("tank");
+
+  hazards.push({
+    type: "laneStrike",
+    lanes: [1, 4, 6],
+    timer: 0,
+    warning: 0.85,
+    duration: 0.32,
+    damage: 42,
+    color: "#ff1f4f"
+  });
+
+  floatingText(canvas.width / 2, 90, "WAVE 75: THE TROLL TRIAL", "#ffde59", 34);
+  floatingText(canvas.width / 2, 130, "Three bosses. One mistake hurts.", "#ff2f88", 24);
+
+  bossSfx("worldbreaker");
+  screenShake = 16;
+}
 function startChaosWave() {
+  if (wave === 75) {
+    startWave75Troll();
+    return;
+  }
+
   const bossIndex = Math.floor(wave - 51) % bossCycle.length;
   const bossA = bossCycle[bossIndex];
   const bossB = bossCycle[(bossIndex + 4) % bossCycle.length];
