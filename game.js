@@ -1101,11 +1101,10 @@ function spawnWave() {
     return;
   }
 
-if (wave > 50) {
-  startChaosWave();
-  return;
-}
-  
+  if (wave > 50) {
+    startChaosWave();
+    return;
+  }
 
   if (wave % 4 === 0) {
     const bossIndex = Math.floor(wave / 4 - 1) % bossCycle.length;
@@ -1133,34 +1132,6 @@ if (wave > 50) {
 
   floatingText(canvas.width / 2, 90, "WAVE " + wave, "#7dfcff", 28);
 }
-function startWave75Troll() {
-  spawnBoss("RAVAGER_CROWNED", true, false);
-  spawnBoss("HYBRID", true, false);
-  spawnBoss("SNIPER", true, false);
-
-  for (let i = 0; i < 6; i++) spawnEnemy("shooter");
-  for (let i = 0; i < 8; i++) spawnEnemy("fast");
-  for (let i = 0; i < 4; i++) spawnEnemy("tank");
-
-  hazards.push({
-    type: "laneStrike",
-    lanes: [1, 4, 6],
-    timer: 0,
-    warning: 0.85,
-    duration: 0.32,
-    damage: 42,
-    color: "#ff1f4f"
-  });
-
-  floatingText(canvas.width / 2, 90, "WAVE 75: THE TROLL TRIAL", "#ffde59", 34);
-  floatingText(canvas.width / 2, 130, "Three bosses. One mistake hurts.", "#ff2f88", 24);
-
-  bossSfx("worldbreaker");
-  screenShake = 16;
-}
-function startChaosWave() {
-  if (wave === 75) {
-    startWave75Troll();
     return;
   }
 
