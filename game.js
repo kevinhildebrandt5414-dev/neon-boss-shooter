@@ -1,5 +1,5 @@
 // =====================================================
-// NEON BOSS SHOOTER v1.2 REBUILD
+// NEON BOSS SHOOTER v1.2 FIXED BUILD
 // Paste PART 1 + PART 2 + PART 3 + PART 4 together into game.js
 // No <script> tags.
 // =====================================================
@@ -7,9 +7,9 @@
 (() => {
 "use strict";
 
-// =========================
+// ==========================
 // PAGE SETUP
-// =========================
+// ==========================
 document.body.innerHTML = "";
 document.body.style.margin = "0";
 document.body.style.overflow = "hidden";
@@ -45,8 +45,7 @@ resize();
 // ==========================
 // SAVE DATA
 // ==========================
-// New clean save key. This avoids old broken patch data from causing bugs.
-const SAVE_KEY = "neonBossShooterV12Clean";
+const SAVE_KEY = "neonBossShooterV12Fixed";
 
 let save = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {
   coins: 0,
@@ -459,7 +458,6 @@ function unlockCharacter(id, achievementId) {
 function countBosses() {
   return enemies.filter(e => e.boss).length;
 }
-
 // ==========================
 // TRAITS
 // ==========================
@@ -470,7 +468,7 @@ function getCorruptionLevel() {
 
 function getVoidLevel() {
   if (save.corruptedMode) return 0;
-  if (wave <= 50 && !save.chaosUnlocked) return 0;
+  if (wave <= 50) return 0;
   return 1;
 }
 
@@ -632,14 +630,15 @@ function openDevConsole() {
   if (pw !== "Neondevshooterdoggoz") return;
 
   let cmd = prompt(
-   "wave25\n" +
-"wave50\n" +
-"wave75\n" +
-"coins100\n" +
-"unlockall\n" +
-"god\n" +
-"panic\n" +
-"reset"
+    "Input:\n\n" +
+    "wave25\n" +
+    "wave50\n" +
+    "wave75\n" +
+    "coins100\n" +
+    "unlockall\n" +
+    "god\n" +
+    "panic\n" +
+    "reset"
   );
 
   resetControls();
@@ -652,16 +651,15 @@ function openDevConsole() {
     wave = 25;
     save.milestones.wave25 = false;
     spawnWave();
-} else if (cmd === "wave50") {
-  startGame();
-  wave = 50;
-  spawnWave();
-} else if (cmd === "wave75") {
-  startGame();
-  wave = 75;
-  spawnWave();
-}
-} else if (cmd === "coins100") {
+  } else if (cmd === "wave50") {
+    startGame();
+    wave = 50;
+    spawnWave();
+  } else if (cmd === "wave75") {
+    startGame();
+    wave = 75;
+    spawnWave();
+  } else if (cmd === "coins100") {
     save.coins += 100;
     saveGame();
     alert("+100 coins");
@@ -994,7 +992,8 @@ function startWave50Intro() {
     bossSfx("worldbreaker");
   });
 }
-  function startFinalEndingCutscene() {
+
+function startFinalEndingCutscene() {
   bullets = [];
   hazards = [];
   orbs = [];
@@ -1048,7 +1047,6 @@ function startWave50Intro() {
     spawnWave();
   });
 }
-
 // ==========================
 // WAVES / SPAWNING
 // ==========================
@@ -1071,7 +1069,7 @@ function checkCharacterUnlockProgress() {
     unlockCharacter("PHANTOM", "phantomUnlocked");
   }
 
-  if (wave >= 60 && save.chaosUnlocked) {
+  if (wave >= 60 && wave > 50) {
     unlockCharacter("ECLIPSE", "eclipseUnlocked");
   }
 }
@@ -1101,6 +1099,9 @@ function spawnWave() {
     return;
   }
 
+  // IMPORTANT FIX:
+  // Chaos starts ONLY after wave 50.
+  // It does NOT start on wave 1 just because chaosUnlocked is true.
   if (wave > 50) {
     startChaosWave();
     return;
@@ -1132,6 +1133,41 @@ function spawnWave() {
 
   floatingText(canvas.width / 2, 90, "WAVE " + wave, "#7dfcff", 28);
 }
+
+function startWave75Troll() {
+  spawnBoss("RAVAGER_CROWNED", true, false);
+  spawnBoss("HYBRID", true, false);
+  spawnBoss("SNIPER", true, false);
+
+  for (let i = 0; i < 6; i++) spawnEnemy("shooter");
+  for (let i = 0; i < 8; i++) spawnEnemy("fast");
+  for (let i = 0; i < 4; i++) spawnEnemy("tank");
+
+  hazards.push({
+    type: "laneStrike",
+    lanes: [1, 4, 6],
+    timer: 0,
+    warning: 0.85,
+    duration: 0.32,
+    damage: 42,
+    color: "#ff1f4f"
+  });
+
+  floatingText(canvas.width / 2, 90, "WAVE 75: THE TROLL TRIAL", "#ffde59", 34);
+  floatingText(canvas.width / 2, 130, "Three bosses. One mistake hurts.", "#ff2f88", 24);
+
+  bossSfx("worldbreaker");
+  screenShake = 16;
+}
+
+function startChaosWave() {
+  if (wave <= 50) {
+    console.warn("Blocked accidental Chaos Mode on wave " + wave);
+    return;
+  }
+
+  if (wave === 75) {
+    startWave75Troll();
     return;
   }
 
@@ -1785,7 +1821,6 @@ function dashTeleportTowardAim(dist) {
   player.y += Math.sin(aim) * dist;
   lockPlayerInBounds();
 }
-
 // ==========================
 // UPDATE
 // ==========================
@@ -1904,7 +1939,7 @@ function handleWaveClear() {
     return;
   }
 
-  if (wave % 4 === 0 || wave > 50 || save.chaosUnlocked) {
+  if (wave % 4 === 0 || wave > 50) {
     bossClearReward(true);
   } else {
     chooseWaveBuff();
@@ -1988,7 +2023,8 @@ function updateEnemies(dt) {
     }
   }
 }
-  // ==========================
+
+// ==========================
 // BOSS AI
 // ==========================
 function updateBoss(e, dt, angle, mult) {
@@ -2135,7 +2171,6 @@ function updateRavagerDormant(e, dt, angle, mult) {
   e.shootTimer -= dt * mult;
   e.summonTimer -= dt * mult;
 
-  // Dormant Ravager stays centered so players can understand the first form.
   e.x += (canvas.width / 2 - e.x) * 0.08;
   e.y += (canvas.height / 2 - e.y) * 0.08;
 
@@ -2839,7 +2874,8 @@ function giveFreeBossUpgrade() {
   floatingText(canvas.width / 2, canvas.height / 2, "FREE RUN UPGRADE: " + reward, "#ffde59", 28);
   playSound(740, 0.16, "triangle", 0.07);
 }
-  // ==========================
+
+// ==========================
 // DRAWING
 // ==========================
 function draw() {
@@ -2882,7 +2918,7 @@ function drawBackground() {
     canvas.width
   );
 
-  bg.addColorStop(0, save.corruptedMode ? "#2b0035" : (wave >= 50 || save.chaosUnlocked ? "#28051f" : "#121a38"));
+  bg.addColorStop(0, save.corruptedMode ? "#2b0035" : (wave >= 50 ? "#28051f" : "#121a38"));
   bg.addColorStop(0.55, "#080d22");
   bg.addColorStop(1, "#03050d");
 
@@ -3451,7 +3487,7 @@ function drawUI() {
   ctx.font = "16px Arial";
   ctx.fillStyle = "white";
 
-  ctx.fillText("Wave: " + wave + (wave > 50 || save.chaosUnlocked ? " CHAOS" : "") + (save.corruptedMode ? " CORRUPTED" : ""), 14, 25);
+  ctx.fillText("Wave: " + wave + (wave > 50 ? " CHAOS" : "") + (save.corruptedMode ? " CORRUPTED" : ""), 14, 25);
   ctx.fillText("Character: " + char.name, 14, 47);
   ctx.fillText("HP: " + Math.ceil(player.hp) + " / " + player.maxHp, 14, 69);
   ctx.fillText("Weapon: " + weaponName + " (" + (player.weaponIndex + 1) + "/" + player.weapons.length + ")", 14, 91);
@@ -3562,6 +3598,22 @@ function drawBossWarningOverlay() {
   ctx.restore();
 }
 
+function burstVisual(x, y, color, amount) {
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = color;
+
+  for (let i = 0; i < amount; i++) {
+    const a = (i / amount) * Math.PI * 2;
+    const r = 70 + Math.sin(performance.now() / 120 + i) * 20;
+
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
 function drawCutscene() {
   if (!cutscene) return;
 
@@ -3603,22 +3655,6 @@ function drawCutscene() {
   ctx.fillText("Press ENTER to skip line", canvas.width / 2, canvas.height - 60);
 }
 
-function burstVisual(x, y, color, amount) {
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = color;
-
-  for (let i = 0; i < amount; i++) {
-    const a = (i / amount) * Math.PI * 2;
-    const r = 70 + Math.sin(performance.now() / 120 + i) * 20;
-
-    ctx.beginPath();
-    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 10, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.globalAlpha = 1;
-}
-
 function drawMenu() {
   ctx.fillStyle = "rgba(0,0,0,0.72)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3637,7 +3673,7 @@ function drawMenu() {
   ctx.shadowBlur = 0;
   ctx.font = "20px Arial";
   ctx.fillStyle = "#cfe7ff";
-  ctx.fillText("v1.2 Clean Rebuild • Ravager Story • Chaos • Corrupted Mode", canvas.width / 2, canvas.height / 2 - 190);
+  ctx.fillText("v1.2 Fixed Build • Ravager Story • Chaos • Corrupted Mode", canvas.width / 2, canvas.height / 2 - 190);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 24px Arial";
@@ -3743,3 +3779,4 @@ function loop(t) {
 requestAnimationFrame(loop);
 
 })();
+
