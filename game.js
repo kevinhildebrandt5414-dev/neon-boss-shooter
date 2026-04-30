@@ -1485,12 +1485,23 @@ function createEnemyBullet(x, y, angle, speed, size, damage, color) {
 // ==========================
 function useCharacterAbility() {
   const now = performance.now() / 1000;
+
+  if (player.lastAbility === undefined || Number.isNaN(player.lastAbility)) {
+    player.lastAbility = -999;
+  }
+
+  if (player.abilityCooldown === undefined || Number.isNaN(player.abilityCooldown)) {
+    player.abilityCooldown = 20;
+  }
+
   const charId = save.selectedCharacter;
 
   if (now - player.lastAbility < player.abilityCooldown) {
     floatingText(player.x, player.y - 45, "ABILITY NOT READY", "#ffffff", 16);
     return;
   }
+
+  player.lastAbility = now;
 
   player.lastAbility = now;
 
