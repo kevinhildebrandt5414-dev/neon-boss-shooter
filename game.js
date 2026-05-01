@@ -1067,10 +1067,10 @@
       playSound(data.sound, 0.04, "square", 0.035);
     }
     if (weaponName === "SHOTGUN") {
-      const pellets = 12 + player.pelletBonus + (evo ? 3 : 0);
+      const pellets = 16 + player.pelletBonus + (evo ? 3 : 0);
       for (let i = 0; i < pellets; i++) {
         const spread = (Math.random() - 0.5) * (evo ? 0.82 : 0.68);
-        createPlayerBullet(angle + spread, baseDmg * 1.1 * damageBoost * (shouldCrit(weaponName) ? 2.25 : 1), data.color, 4, 0.68, false, weaponName);
+        createPlayerBullet(angle + spread, baseDmg * 0.9 * damageBoost * (shouldCrit(weaponName) ? 2.25 : 1), data.color, 4, 0.68, false, weaponName);
       }
       burst(player.x, player.y, data.color, 15, 260);
       playSound(data.sound, 0.09, "sawtooth", 0.055);
