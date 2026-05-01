@@ -1126,7 +1126,7 @@
     if (weaponName === "NOVABURST") {
       const shots = evo ? 7 : 5;
       for (let i = 0; i < shots; i++) {
-        createPlayerBullet(angle + (i - Math.floor(shots / 2)) * 0.09, baseDmg * 0.675 * damageBoost * crit, data.color, 6, 1.2, true, weaponName);
+        createPlayerBullet(angle + (i - Math.floor(shots / 2)) * 0.09, baseDmg * 0.425 * damageBoost * crit, data.color, 6, 1.2, true, weaponName);
         bullets[bullets.length - 1].pierce = evo ? 4 : 2;
       }
       playSound(data.sound, 0.08, "triangle", 0.05);
