@@ -1077,7 +1077,7 @@
       screenShake = Math.max(screenShake, 4);
     }
     if (weaponName === "BURST") {
-      const shots = evo ? 5 : 3;
+      const shots = evo ? 9 : 5;
       for (let i = 0; i < shots; i++) createPlayerBullet(angle + (i - Math.floor(shots / 2)) * 0.07, baseDmg * 0.9 * damageBoost * crit, data.color, 5, 1.1, false, weaponName);
       playSound(data.sound, 0.055, "square", 0.04);
     }
